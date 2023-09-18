@@ -1,7 +1,7 @@
 import torch.nn as nn
 import pandas as pd
 import torch
-from model_soc_ocv import Model
+from model_soc_ocv import Model_Soc_Ocv
 
 if __name__ == "__main__":
     # Limit the number of cpu cores to 1
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     test_inputs = test_inputs.float()
     test_outputs = test_outputs.float()
     # Create the model
-    model = Model()
+    model = Model_Soc_Ocv()
     # model = PINN_Model()
     # Create the optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)

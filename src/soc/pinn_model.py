@@ -4,7 +4,7 @@ import sys
 import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
-from soc_ocv.model_soc_ocv import Model
+from soc_ocv.model_soc_ocv import Model_Soc_Ocv
 
 class PINN_Model(nn.Module):
     """
@@ -22,10 +22,10 @@ class PINN_Model(nn.Module):
         Constructor of the model.
         """
         super(PINN_Model, self).__init__()
-        self.fc1 = nn.Linear(3, 64)
-        self.fc2 = nn.Linear(64, 64)
-        self.fc3 = nn.Linear(64, 64)
-        self.fc4 = nn.Linear(64, 1)
+        self.fc1 = nn.Linear(4, 16)
+        self.fc2 = nn.Linear(16, 16)
+        self.fc3 = nn.Linear(16, 16)
+        self.fc4 = nn.Linear(16, 1)
 
     def forward(self, x):
         """
@@ -40,13 +40,20 @@ class PINN_Model(nn.Module):
         output = self.fc4(output)
         return output
 
-    def loss(self, x, y):
+    def loss(self, x, y, physics_x):
         """
         Loss function of the model.
         """
+        # print(self.forward(x))
         data_loss = nn.functional.mse_loss(self.forward(x), y)
-        physics_loss = self.physics_loss(x, y)
-        return data_loss + physics_loss
+        physics_loss = self.physics_loss_soc_de(physics_x)
+        # physics_loss = 0
+        data_weight = 1
+        physics_weight = 1
+        print("Physics loss:", physics_loss)
+        print("Data loss:", data_loss)
+        print("Total loss:", data_weight*data_loss + physics_weight*physics_loss)
+        return data_weight*data_loss + physics_weight*physics_loss
     
     def validation_loss(self, x, y):
         """
@@ -55,16 +62,17 @@ class PINN_Model(nn.Module):
         output = self.forward(x)
         return nn.functional.mse_loss(output, y)
     
-    def physics_loss(self, x, y):
+    def physics_loss_Rint(self, x, y):
         """
         Equation loss of the model. The equivalent circuit is a simple resistor in series with a voltage source.
         """
         # Extract the inputs
-        voltage = x[:, 0]
-        current = x[:, 1]
-        temperature = x[:, 2]
+        time_step = x[:, 0]
+        voltage = x[:, 1]
+        current = x[:, 2]
+        temperature = x[:, 3]
         # Load the open circuit voltage model
-        open_circuit_voltage_model = Model()
+        open_circuit_voltage_model = Model_Soc_Ocv()
         open_circuit_voltage_model.load_state_dict(torch.load("pth_models/model_soc_ocv.pth")) 
         # Compute the estimated SoC
         # estimated_soc = self.forward(x)
@@ -76,4 +84,35 @@ class PINN_Model(nn.Module):
         # Compute the equation loss
         eq_loss = torch.mean(torch.abs(open_circuit_voltage - voltage + resistence * current))
         # Square 
+        return eq_loss
+    
+    def physics_loss_soc_de(self, x):
+        """
+        Equation loss of the model. The equation is the following:
+        dSoC/dt = -I / (3600 * C)
+        where:
+            - dSoC/dt: Rate of change of the SoC
+            - I: Current
+            - C: Capacity in Ah
+        """
+        # Define the inputs for the equation by selecting 10 random samples from x
+        time_step = torch.tensor(x[:, 0], requires_grad=True)
+        voltage = torch.tensor(x[:, 1], requires_grad=True)
+        current = torch.tensor(x[:, 2], requires_grad=True)
+        temperature = torch.tensor(x[:, 3], requires_grad=True)
+        # Define the capacity
+        capacity = 3.0
+        # Define the inputs
+        physics_input = torch.stack((time_step, voltage, current, temperature), dim=1)
+        # Compute the estimated SoC
+        estimated_soc = self.forward(physics_input)
+        estimated_soc = torch.flatten(estimated_soc)
+        # print("Estimated soc: ", estimated_soc)
+        # Compute the derivative of the SoC with respect to time_step
+        d_soc_dt = torch.autograd.grad(estimated_soc, time_step, grad_outputs=torch.ones_like(time_step), retain_graph=True, create_graph=True)[0]
+        # Compute the equation loss
+        # print(d_soc_dt)
+        eq_loss = torch.abs(d_soc_dt + current / (3600 * capacity))
+        eq_loss = torch.sum(eq_loss)
+        # print("Eq loss: ", eq_loss)
         return eq_loss

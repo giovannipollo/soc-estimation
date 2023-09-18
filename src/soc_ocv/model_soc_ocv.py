@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-class Model(nn.Module):
+class Model_Soc_Ocv(nn.Module):
     """
     Model class. The model must have 2 inputs and 1 output.
     The inputs are:
@@ -13,7 +13,7 @@ class Model(nn.Module):
         """
         Constructor of the model.
         """
-        super(Model, self).__init__()
+        super(Model_Soc_Ocv, self).__init__()
         self.fc1 = nn.Linear(2, 64)
         self.fc2 = nn.Linear(64, 64)
         self.fc3 = nn.Linear(64, 64)

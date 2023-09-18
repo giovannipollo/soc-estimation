@@ -1,0 +1,8 @@
+Test loss: 32.775318
+Test loss: 21.648808
+Test loss: 13.262388
+Test loss: 7.516602
+Test loss: 3.985704
+Test loss: 2.067513
+Test loss: 1.159317
+Test loss: 0.784964
