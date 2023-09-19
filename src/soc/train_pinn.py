@@ -7,6 +7,12 @@ from model import Model
 from pinn_model import PINN_Model
 import scipy.io as sio
 import logging
+import sys
+import os
+
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
+from dataset.dataset import CustomDataset
 
 def prepare_step_time(data):
     """
@@ -232,7 +238,8 @@ def cross_validation():
 
     # Initialize other training parameters
     best_loss = float("inf")
-    patience = 20000  # Number of epochs to wait before stopping if validation loss increases
+    # Number of epochs to wait before stopping if validation loss increases
+    patience = 20000 
 
     for epoch in range(500000):
         if epoch % 10 == 0:
@@ -246,14 +253,14 @@ def cross_validation():
             # Check if validation loss is increasing
             if validation_loss < best_loss:
                 best_loss = validation_loss
-                print("Best validation loss: %f" % best_loss)
+                logging.debug("Best validation loss: %f" % best_loss)
                 # Save the model weights
-                torch.save(model.state_dict(), "best_model.pth")
+                torch.save(model.state_dict(), "pth_models/best_model.pth")
             else:
                 # If validation loss increases for 'patience' epochs, stop training
                 if epoch > patience and validation_loss >= best_loss:
-                    print("Best validation loss: %f" % best_loss)
-                    print("Early stopping at epoch %d" % epoch)
+                    logging.info("Best validation loss: %f" % best_loss)
+                    logging.info("Early stopping at epoch %d" % epoch)
                     break
         # Reset the gradients
         optimizer.zero_grad()
