@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch
 import sys
 import os
+import logging
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 from soc_ocv.model_soc_ocv import Model_Soc_Ocv
@@ -40,19 +41,25 @@ class PINN_Model(nn.Module):
         output = self.fc4(output)
         return output
 
-    def loss(self, x, y, physics_x):
+    def loss(self, x, y, physics_x, physics_informed=False):
         """
         Loss function of the model.
         """
-        # print(self.forward(x))
+        # Loss driven by data
         data_loss = nn.functional.mse_loss(self.forward(x), y)
-        physics_loss = self.physics_loss_soc_de(physics_x)
-        # physics_loss = 0
+        # Loss driven by physics
+        if physics_informed:
+            physics_loss = self.physics_loss_soc_de(physics_x)
+        else:
+            physics_loss = 0
+        
+        # Weights for each contribution of the loss
         data_weight = 1
         physics_weight = 1
-        print("Physics loss:", physics_loss)
-        print("Data loss:", data_loss)
-        print("Total loss:", data_weight*data_loss + physics_weight*physics_loss)
+        # Print the losses when debugging
+        logging.debug("Data loss: " + str(data_loss))
+        logging.debug("Physics loss: " + str(physics_loss))
+        # Return the weighted sum of the losses
         return data_weight*data_loss + physics_weight*physics_loss
     
     def validation_loss(self, x, y):

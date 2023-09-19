@@ -6,6 +6,7 @@ import torch
 from model import Model
 from pinn_model import PINN_Model
 import scipy.io as sio
+import logging
 
 def prepare_step_time(data):
     """
@@ -237,7 +238,7 @@ def cross_validation():
         if epoch % 10 == 0:
             # Calculate the validation loss
             validation_loss = model.validation_loss(test_inputs, test_outputs).item()
-            print("Validation loss: %f" % validation_loss)
+            logging.info("Epoch: %d, Validation loss: %f" % (epoch, validation_loss))
 
             # Update the learning rate scheduler based on the validation loss
             scheduler.step(validation_loss)
@@ -270,7 +271,25 @@ def cross_validation():
     torch.save(model.state_dict(), "pth_models/model_soc_pinn.pth")
 
 
+def setup_logging(level=logging.INFO):
+    """
+    Setup the logging environment
+    """
+    # Create the logger
+    logger = logging.getLogger()
+    # Set the log level
+    logger.setLevel(level)
+    # Create the formatter
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    # Create the file handler
+    file_handler = logging.FileHandler("log/train_pinn.log")
+    # Set the formatter
+    file_handler.setFormatter(formatter)
+    # Add the file handler to the logger
+    logger.addHandler(file_handler)
+
 if __name__ == "__main__":
+    setup_logging(level=logging.DEBUG)
     # single_dataset()
     # double_dataset()
     cross_validation()
