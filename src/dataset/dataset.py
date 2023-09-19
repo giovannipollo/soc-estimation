@@ -35,7 +35,6 @@ class CustomDataset():
         }
         # Convert the data to a pandas dataframe
         data = pd.DataFrame(data)
-        print(data)
         # Split the data into train and test
         train_data = data.sample(frac=train_split, random_state=0)
         test_data = data.drop(train_data.index)

@@ -7,7 +7,7 @@ if [ $# -eq 1 ]; then
     elif [ $1 -eq 1 ]; then
         python3 src/soc/train.py
     elif [ $1 -eq 2 ]; then
-        python3 src/soc/train_pinn.py
+        python3 src/soc/train.py
     fi
 else
     echo "Usage: ./run.sh <number>"
