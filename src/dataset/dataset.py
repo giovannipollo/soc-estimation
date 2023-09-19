@@ -3,16 +3,9 @@ import torch
 import scipy.io as sio
 
 class CustomDataset():
-    def __init__(self, dataset_type):
-        if dataset_type == "panasonic":
-            # self.prepare_panasonic_dataset()
-            pass
-        elif dataset_type == "lg":
-            # self.prepare_lg_dataset()
-            pass
-        else:
-            raise ValueError("Invalid dataset type")
-
+    def __init__(self):
+        pass
+    
     def prepare_panasonic_dataset(self, file="data/Panasonic/Panasonic 18650PF Data/Panasonic 18650PF Data/25degC/Drive cycles/03-18-17_02.17 25degC_Cycle_1_Pan18650PF.mat", train_split=0.8, validation_split=0.2):
         """Prepare panasonic dataset"""
         # Load the .mat file with the test data
@@ -36,7 +29,7 @@ class CustomDataset():
         # Convert the data to a pandas dataframe
         data = pd.DataFrame(data)
         # Split the data into train and test
-        train_data = data.sample(frac=train_split, random_state=0)
+        train_data = data.sample(frac=train_split, random_state=1)
         test_data = data.drop(train_data.index)
         # Extract the inputs and outputs
         train_inputs = train_data[["Step Time", "Voltage", "Current", "Temperature"]]
@@ -80,7 +73,7 @@ class CustomDataset():
         # Prepare the step time
         self.prepare_step_time(data)
         # Split the data into train and test
-        train_data = data.sample(frac=train_split, random_state=0)
+        train_data = data.sample(frac=train_split, random_state=1)
         test_data = data.drop(train_data.index)
         # Extract the inputs and outputs
         train_inputs = train_data[["Step Time", "Voltage", "Current", "Temperature"]]
@@ -103,3 +96,37 @@ class CustomDataset():
         test_outputs = torch.tensor(test_outputs.values)
         # Return the data
         return train_inputs, train_outputs, test_inputs, test_outputs
+    
+    def prepare_sandia_time_series(self, file="data/Sandia/time_series/SNL_18650_LFP_15C_0-100_0.5-1C_a_timeseries.csv", train_split=0.8, validation_split=0.2):
+        """Prepare sandia dataset"""
+        data = pd.read_csv(file)
+        # Extract the data we want to use
+        data = data[["Cycle_Index", "Voltage (V)", "Current (A)", "Cell_Temperature (C)", "Charge_Capacity (Ah)", "Discharge_Capacity (Ah)"]]
+        # Compute the actual capacity
+        data["Capacity"] = data["Charge_Capacity (Ah)"] - data["Discharge_Capacity (Ah)"]
+        # Convert the capacity to SoC
+        self.convert_capacity_to_soc(data["Capacity"], nominal_capacity=1.1)
+        data = data[["Cycle_Index", "Voltage (V)", "Current (A)", "Cell_Temperature (C)", "Capacity"]]
+        # Split the data into train and test
+        train_data = data.sample(frac=train_split, random_state=1)
+        test_data = data.drop(train_data.index)
+        # Extract the inputs and outputs
+        train_inputs = train_data[["Cycle_Index", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
+        train_outputs = train_data[["Capacity"]]
+        test_inputs = test_data[["Cycle_Index", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
+        test_outputs = test_data[["Capacity"]]
+        # Convert the inputs and outputs to tensors
+        train_inputs = torch.tensor(train_inputs.values)
+        train_outputs = torch.tensor(train_outputs.values)
+        test_inputs = torch.tensor(test_inputs.values)
+        test_outputs = torch.tensor(test_outputs.values)
+        # Convert the inputs and outputs to float
+        train_inputs = train_inputs.float()
+        train_outputs = train_outputs.float()
+        test_inputs = test_inputs.float()
+        test_outputs = test_outputs.float()
+
+        # Return the data
+        return train_inputs, train_outputs, test_inputs, test_outputs
+
+        

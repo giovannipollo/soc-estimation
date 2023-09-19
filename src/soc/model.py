@@ -41,7 +41,7 @@ class PINN_Model(nn.Module):
         output = self.fc4(output)
         return output
 
-    def loss(self, x, y, physics_x = None, physics_informed=False):
+    def loss(self, x, y, physics_x = None, physics_informed=False, capacity = 0):
         """
         Loss function of the model.
         """
@@ -49,7 +49,7 @@ class PINN_Model(nn.Module):
         data_loss = nn.functional.mse_loss(self.forward(x), y)
         # Loss driven by physics
         if physics_informed:
-            physics_loss = self.physics_loss_soc_de(physics_x)
+            physics_loss = self.physics_loss_soc_de(physics_x, capacity=capacity)
         else:
             physics_loss = 0
         
@@ -93,7 +93,7 @@ class PINN_Model(nn.Module):
         # Square 
         return eq_loss
     
-    def physics_loss_soc_de(self, x):
+    def physics_loss_soc_de(self, x, capacity):
         """
         Equation loss of the model. The equation is the following:
         dSoC/dt = -I / (3600 * C)
@@ -107,8 +107,6 @@ class PINN_Model(nn.Module):
         voltage = torch.tensor(x[:, 1], requires_grad=True)
         current = torch.tensor(x[:, 2], requires_grad=True)
         temperature = torch.tensor(x[:, 3], requires_grad=True)
-        # Define the capacity
-        capacity = 3.0
         # Define the inputs
         physics_input = torch.stack((time_step, voltage, current, temperature), dim=1)
         # Compute the estimated SoC
@@ -118,8 +116,8 @@ class PINN_Model(nn.Module):
         # Compute the derivative of the SoC with respect to time_step
         d_soc_dt = torch.autograd.grad(estimated_soc, time_step, grad_outputs=torch.ones_like(time_step), retain_graph=True, create_graph=True)[0]
         # Compute the equation loss
-        logging.debug(d_soc_dt)
-        eq_loss = torch.abs(d_soc_dt + current / (3600 * capacity))
-        eq_loss = torch.sum(eq_loss)
+        logging.debug("d_soc_dt: ", d_soc_dt)
+        eq_loss = torch.abs(d_soc_dt - current / (3600 * capacity))
+        eq_loss = torch.mean(eq_loss)
         logging.debug("Eq loss: ", eq_loss)
         return eq_loss

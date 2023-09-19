@@ -15,10 +15,11 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 from dataset.dataset import CustomDataset
 
 def train():
-    # Load the dataset
-    train_inputs, train_outputs, test_inputs, test_outputs = CustomDataset("panasonic").prepare_panasonic_dataset()
-    # Set the seed for reproducibility
+    train_inputs, train_outputs, trash, trash= CustomDataset().prepare_sandia_time_series(file="data/Sandia/time_series/SNL_18650_LFP_15C_0-100_0.5-1C_a_timeseries.csv", train_split=1, validation_split=0)
+    physics_inputs, physics_outputs, trash, trash = CustomDataset().prepare_sandia_time_series(file="data/Sandia/time_series/SNL_18650_LFP_15C_0-100_0.5-1C_b_timeseries.csv", train_split=0.1, validation_split=0)
+    test_inputs, test_outputs, trash, trash = CustomDataset().prepare_sandia_time_series(file="data/Sandia/time_series/SNL_18650_LFP_15C_0-100_0.5-2C_a_timeseries.csv", train_split=1, validation_split=0)
     torch.manual_seed(0)
+    # Set the seed for reproducibility
     # Create the model
     model = PINN_Model()
     # Define the initial learning rate
@@ -30,16 +31,14 @@ def train():
     # Initialize other training parameters
     best_loss = float("inf")
     # Number of epochs to wait before stopping if validation loss increases
-    patience = 20000 
-    for epoch in range(500000):
+    patience = 80000 
+    for epoch in range(200000):
         if epoch % 10 == 0:
             # Calculate the validation loss
             validation_loss = model.validation_loss(test_inputs, test_outputs).item()
             logging.info("Epoch: %d, Validation loss: %f" % (epoch, validation_loss))
-
             # Update the learning rate scheduler based on the validation loss
             scheduler.step(validation_loss)
-
             # Check if validation loss is increasing
             if validation_loss < best_loss:
                 best_loss = validation_loss
@@ -55,7 +54,7 @@ def train():
         # Reset the gradients
         optimizer.zero_grad()
         # Calculate the loss
-        loss = model.loss(train_inputs, train_outputs)
+        loss = model.loss(train_inputs, train_outputs, physics_informed=True, physics_x=physics_inputs, capacity=1.1)
         # Backward pass
         loss.backward()
         # Update the weights
