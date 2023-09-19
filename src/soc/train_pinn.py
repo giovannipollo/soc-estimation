@@ -71,8 +71,6 @@ def single_dataset():
             print("Test loss: %f" % loss.item())
         # Reset the gradients
         optimizer.zero_grad()
-        # Forward pass
-        outputs = model(train_inputs)
         # Calculate the loss
         loss = model.loss(train_inputs, train_outputs)
         # Backward pass
@@ -81,8 +79,6 @@ def single_dataset():
         optimizer.step()
         # Print the loss
         # print("Epoch: %d, Loss: %f" % (epoch, loss.item()))
-    # Test the model
-    outputs = model(test_inputs)
     # Calculate the loss
     loss = model.validation_loss(test_inputs, test_outputs)
     # Print the loss
@@ -258,7 +254,7 @@ def cross_validation():
                     print("Best validation loss: %f" % best_loss)
                     print("Early stopping at epoch %d" % epoch)
                     break
-         # Reset the gradients
+        # Reset the gradients
         optimizer.zero_grad()
         # Calculate the loss
         loss = model.loss(train_inputs, train_outputs, physics_input)
