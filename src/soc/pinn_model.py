@@ -41,7 +41,7 @@ class PINN_Model(nn.Module):
         output = self.fc4(output)
         return output
 
-    def loss(self, x, y, physics_x, physics_informed=False):
+    def loss(self, x, y, physics_x = None, physics_informed=False):
         """
         Loss function of the model.
         """
