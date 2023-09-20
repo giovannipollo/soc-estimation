@@ -161,3 +161,4 @@ cython_debug/
 
 # Remove the data, that contains the datasets
 data/
+plots/

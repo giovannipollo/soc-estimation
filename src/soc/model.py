@@ -103,10 +103,10 @@ class PINN_Model(nn.Module):
             - C: Capacity in Ah
         """
         # Define the inputs for the equation by selecting 10 random samples from x
-        time_step = torch.tensor(x[:, 0], requires_grad=True)
-        voltage = torch.tensor(x[:, 1], requires_grad=True)
-        current = torch.tensor(x[:, 2], requires_grad=True)
-        temperature = torch.tensor(x[:, 3], requires_grad=True)
+        time_step = x[:, 0].clone().detach().requires_grad_(True)
+        voltage = x[:, 1].clone().detach().requires_grad_(True)
+        current = x[:, 2].clone().detach().requires_grad_(True)
+        temperature = x[:, 3].clone().detach().requires_grad_(True)
         # Define the inputs
         physics_input = torch.stack((time_step, voltage, current, temperature), dim=1)
         # Compute the estimated SoC
@@ -117,7 +117,6 @@ class PINN_Model(nn.Module):
         d_soc_dt = torch.autograd.grad(estimated_soc, time_step, grad_outputs=torch.ones_like(time_step), retain_graph=True, create_graph=True)[0]
         # Compute the equation loss
         logging.debug("d_soc_dt: ", d_soc_dt)
-        eq_loss = torch.abs(d_soc_dt - current / (3600 * capacity))
-        eq_loss = torch.mean(eq_loss)
+        eq_loss = nn.functional.mse_loss(d_soc_dt, current / (3600 * capacity))
         logging.debug("Eq loss: ", eq_loss)
         return eq_loss

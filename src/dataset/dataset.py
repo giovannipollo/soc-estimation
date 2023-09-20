@@ -97,23 +97,23 @@ class CustomDataset():
         # Return the data
         return train_inputs, train_outputs, test_inputs, test_outputs
     
-    def prepare_sandia_time_series(self, file="data/Sandia/time_series/SNL_18650_LFP_15C_0-100_0.5-1C_a_timeseries.csv", train_split=0.8, validation_split=0.2):
+    def prepare_sandia_time_series(self, file="", train_split=0.8, validation_split=0.2):
         """Prepare sandia dataset"""
         data = pd.read_csv(file)
         # Extract the data we want to use
-        data = data[["Cycle_Index", "Voltage (V)", "Current (A)", "Cell_Temperature (C)", "Charge_Capacity (Ah)", "Discharge_Capacity (Ah)"]]
+        data = data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)", "Charge_Capacity (Ah)", "Discharge_Capacity (Ah)"]]
         # Compute the actual capacity
         data["Capacity"] = data["Charge_Capacity (Ah)"] - data["Discharge_Capacity (Ah)"]
         # Convert the capacity to SoC
         self.convert_capacity_to_soc(data["Capacity"], nominal_capacity=1.1)
-        data = data[["Cycle_Index", "Voltage (V)", "Current (A)", "Cell_Temperature (C)", "Capacity"]]
+        data = data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)", "Capacity"]]
         # Split the data into train and test
         train_data = data.sample(frac=train_split, random_state=1)
         test_data = data.drop(train_data.index)
         # Extract the inputs and outputs
-        train_inputs = train_data[["Cycle_Index", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
+        train_inputs = train_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
         train_outputs = train_data[["Capacity"]]
-        test_inputs = test_data[["Cycle_Index", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
+        test_inputs = test_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
         test_outputs = test_data[["Capacity"]]
         # Convert the inputs and outputs to tensors
         train_inputs = torch.tensor(train_inputs.values)
