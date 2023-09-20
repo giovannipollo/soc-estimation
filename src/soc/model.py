@@ -82,7 +82,6 @@ class PINN_Model(nn.Module):
         open_circuit_voltage_model = Model_Soc_Ocv()
         open_circuit_voltage_model.load_state_dict(torch.load("pth_models/model_soc_ocv.pth")) 
         # Compute the estimated SoC
-        # estimated_soc = self.forward(x)
         input_tensor = torch.stack((temperature, torch.flatten(y)), dim=1)
         # Compute the open circuit voltage based on the estimated SoC and the temperature
         open_circuit_voltage_model.eval()
@@ -107,16 +106,16 @@ class PINN_Model(nn.Module):
         voltage = x[:, 1].clone().detach().requires_grad_(True)
         current = x[:, 2].clone().detach().requires_grad_(True)
         temperature = x[:, 3].clone().detach().requires_grad_(True)
-        # Define the inputs
+        # Define the physics inputs
         physics_input = torch.stack((time_step, voltage, current, temperature), dim=1)
         # Compute the estimated SoC
         estimated_soc = self.forward(physics_input)
         estimated_soc = torch.flatten(estimated_soc)
         logging.debug("Estimated soc: ", estimated_soc)
         # Compute the derivative of the SoC with respect to time_step
-        d_soc_dt = torch.autograd.grad(estimated_soc, time_step, grad_outputs=torch.ones_like(time_step), retain_graph=True, create_graph=True)[0]
+        d_soc_dt = torch.autograd.grad(estimated_soc, time_step, grad_outputs=torch.ones_like(time_step), create_graph=True)[0]
         # Compute the equation loss
         logging.debug("d_soc_dt: ", d_soc_dt)
-        eq_loss = nn.functional.mse_loss(d_soc_dt, current / (3600 * capacity))
+        eq_loss = torch.sum(torch.abs(d_soc_dt + current / (3600 * capacity)))
         logging.debug("Eq loss: ", eq_loss)
         return eq_loss
