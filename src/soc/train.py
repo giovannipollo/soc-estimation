@@ -17,9 +17,8 @@ from dataset.dataset import CustomDataset
 
 def train():
     train_inputs, train_outputs, test_inputs, test_outputs= CustomDataset().prepare_sandia_time_series(file="data/Sandia/time_series/SNL_18650_LFP_15C_0-100_0.5-1C_a_timeseries.csv", train_split=0.8, validation_split=0)
-    physics_inputs, physics_outputs, trash, trash = CustomDataset().prepare_sandia_time_series(file="data/Sandia/time_series/SNL_18650_LFP_15C_0-100_0.5-1C_b_timeseries.csv", train_split=1, validation_split=0)
-    torch.manual_seed(0)
     # Set the seed for reproducibility
+    torch.manual_seed(0)
     # Create the model
     model = PINN_Model()
     # Define the initial learning rate
@@ -55,15 +54,6 @@ def train():
         optimizer.zero_grad()
         # Calculate the loss
         loss = model.loss(train_inputs, train_outputs, physics_informed=False, physics_x=physics_inputs, capacity=1.1)
-        # if (epoch % 100 == 0):
-        #     # Forward pass
-        #     outputs = model(train_inputs)
-        #     # Plot the outputs and the targets
-        #     plt.plot(train_inputs[:, 0].detach().numpy(), outputs.detach().numpy(), label="Predicted")
-        #     plt.plot(train_inputs[:, 0].detach().numpy(), train_outputs.detach().numpy(), label="Target")
-        #     plt.legend()
-        #     plt.savefig("plots/epoch_%d.png" % epoch)
-        #     plt.close()
         # Backward pass
         loss.backward()
         # Update the weights

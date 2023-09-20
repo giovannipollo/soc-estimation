@@ -41,7 +41,7 @@ class PINN_Model(nn.Module):
         output = self.fc4(output)
         return output
 
-    def loss(self, x, y, physics_x = None, physics_informed=False, capacity = 0):
+    def loss(self, x, y, physics_x = None, physics_informed=False, pinn_type=None, capacity = 0):
         """
         Loss function of the model.
         """
@@ -49,9 +49,12 @@ class PINN_Model(nn.Module):
         data_loss = nn.functional.mse_loss(self.forward(x), y)
         # Loss driven by physics
         if physics_informed:
-            physics_loss = self.physics_loss_soc_de(physics_x, capacity=capacity)
-        else:
-            physics_loss = 0
+            if pinn_type == "cc":
+                physics_loss = self.physics_loss_soc_de(physics_x, capacity=capacity)
+            elif pinn_type == "rint":
+                physics_loss = self.physics_loss_Rint(physics_x, y)
+            else:
+                physics_loss = 0
         
         # Weights for each contribution of the loss
         data_weight = 1
@@ -74,7 +77,6 @@ class PINN_Model(nn.Module):
         Equation loss of the model. The equivalent circuit is a simple resistor in series with a voltage source.
         """
         # Extract the inputs
-        time_step = x[:, 0]
         voltage = x[:, 1]
         current = x[:, 2]
         temperature = x[:, 3]
@@ -89,7 +91,6 @@ class PINN_Model(nn.Module):
         resistence = 15e-3
         # Compute the equation loss
         eq_loss = torch.mean(torch.abs(open_circuit_voltage - voltage + resistence * current))
-        # Square 
         return eq_loss
     
     def physics_loss_soc_de(self, x, capacity):

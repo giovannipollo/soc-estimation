@@ -125,7 +125,6 @@ class CustomDataset():
         train_outputs = train_outputs.float()
         test_inputs = test_inputs.float()
         test_outputs = test_outputs.float()
-
         # Return the data
         return train_inputs, train_outputs, test_inputs, test_outputs
 
