@@ -13,10 +13,10 @@ import matplotlib.pyplot as plt
 
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
-from dataset.dataset import CustomDataset
+from dataset.sandia import SandiaDataset
 
 def train():
-    train_inputs, train_outputs, test_inputs, test_outputs= CustomDataset().prepare_sandia_time_series(file="data/Sandia/time_series/SNL_18650_LFP_15C_0-100_0.5-1C_a_timeseries.csv", train_split=0.8, validation_split=0)
+    train_inputs, train_outputs, test_inputs, test_outputs= SandiaDataset(file="data/Sandia/time_series/SNL_18650_LFP_15C_0-100_0.5-1C_a_timeseries.csv", train_split=0.8, validation_split=0)
     # Set the seed for reproducibility
     torch.manual_seed(0)
     # Create the model
