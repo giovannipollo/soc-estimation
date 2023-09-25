@@ -57,6 +57,28 @@ class PINN_Model(nn.Module):
     def loss(self, x, y, physics_x = None, physics_informed=False, pinn_type=None, capacity = 0):
         """
         Loss function of the model.
+
+        Parameters
+        ----------
+        x : torch.tensor
+            Inputs of the model.
+        y : torch.tensor
+            Outputs of the model.
+        physics_x : torch.tensor, optional
+            Inputs of the model for the physics loss. The default is None.
+        physics_informed : bool, optional
+            If True, the physics loss is computed. The default is False.
+        pinn_type : str, optional
+            Type of the physics loss. The default is None. Allowed values are:
+                - "cc": Coulomb counting
+                - "rint": Resistor in series with a voltage source
+        capacity : float, optional
+            Nominal capacity of the battery. The default is 0.
+
+        Returns
+        -------
+        loss : float
+            Loss of the model computed summing the mean squared error and the physics loss.
         """
         # Loss driven by data
         data_loss = nn.functional.mse_loss(self.forward(x), y)
@@ -81,6 +103,18 @@ class PINN_Model(nn.Module):
     def validation_loss(self, x, y):
         """
         Loss function of the model.
+
+        Parameters
+        ----------
+        x : torch.tensor
+            Inputs of the model.
+        y : torch.tensor
+            Outputs of the model.
+        
+        Returns
+        -------
+        loss : float
+            Loss of the model computed using the mean squared error.
         """
         output = self.forward(x)
         return nn.functional.mse_loss(output, y)
@@ -88,6 +122,18 @@ class PINN_Model(nn.Module):
     def physics_loss_Rint(self, x, y):
         """
         Equation loss of the model. The equivalent circuit is a simple resistor in series with a voltage source.
+
+        Parameters
+        ----------
+        x : torch.tensor
+            Inputs of the model.
+        y : torch.tensor
+            Outputs of the model.
+
+        Returns
+        -------
+        eq_loss : float
+            Equation loss of the model.
         """
         # Extract the inputs
         voltage = x[:, 1]
@@ -114,6 +160,19 @@ class PINN_Model(nn.Module):
             - dSoC/dt: Rate of change of the SoC
             - I: Current
             - C: Capacity in Ah
+
+        Parameters
+        ----------
+        x : torch.tensor
+            Inputs of the model.
+        capacity : float
+            Nominal capacity of the battery.
+
+        Returns
+        -------
+        eq_loss : float
+            Equation loss of the model.
+
         """
         # Define the inputs for the equation by selecting 10 random samples from x
         time_step = x[:, 0].clone().detach().requires_grad_(True)
