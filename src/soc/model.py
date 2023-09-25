@@ -3,6 +3,8 @@ import torch
 import sys
 import os
 import logging
+import numpy as np
+import matplotlib.pyplot as plt
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 from soc_ocv.model_soc_ocv import Model_Soc_Ocv
@@ -18,7 +20,7 @@ class PINN_Model(nn.Module):
     The output is:
         - State of Charge (SoC): The SoC is a value between 0 and 1 that indicates the current capacity of the battery.
     """
-    def __init__(self, input_size=3, output_size=1, hidden_size=16):
+    def __init__(self, input_size=4, output_size=1, hidden_size=16):
         """
         Constructor of the model
 
@@ -40,6 +42,15 @@ class PINN_Model(nn.Module):
         self.fc2 = nn.Linear(hidden_size, hidden_size)
         self.fc3 = nn.Linear(hidden_size, hidden_size)
         self.fc4 = nn.Linear(hidden_size, output_size)
+        self.model = nn.Sequential(
+            self.fc1,
+            nn.ReLU(),
+            self.fc2,
+            nn.ReLU(),
+            self.fc3,
+            nn.ReLU(),
+            self.fc4
+        )
 
     def forward(self, x):
         """
@@ -88,8 +99,8 @@ class PINN_Model(nn.Module):
                 physics_loss = self.physics_loss_soc_de(physics_x, capacity=capacity)
             elif pinn_type == "rint":
                 physics_loss = self.physics_loss_Rint(physics_x, y)
-            else:
-                physics_loss = 0
+        else:
+            physics_loss = 0
         
         # Weights for each contribution of the loss
         data_weight = 1
@@ -192,3 +203,30 @@ class PINN_Model(nn.Module):
         eq_loss = torch.sum(torch.abs(d_soc_dt + current / (3600 * capacity)))
         logging.debug("Eq loss: ", eq_loss)
         return eq_loss
+    
+    def plot_epoch_loss(self, train_loss, validation_loss, epoch):
+        """
+        Plot the loss for each epoch
+
+        Parameters
+        ----------
+        train_loss : list
+            List containing the training loss for each epoch.
+        validation_loss : list
+            List containing the validation loss for each epoch.
+        epoch : int
+            Number of epochs.
+
+        Returns
+        -------
+        None.
+        """
+        # Plot the loss
+        plt.figure()
+        plt.plot(np.arange(epoch), train_loss, label="Train loss")
+        plt.plot(np.arange(epoch), validation_loss, label="Validation loss")
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.legend()
+        plt.savefig("loss.png")
+        plt.close()

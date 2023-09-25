@@ -3,8 +3,7 @@ import torch
 import pandas as pd
 
 class SandiaDataset():
-    
-    def __init__(self, file, train_split=0.8, validation_split=0.2, nominal_capacity=1.1):
+    def __init__(self, file, train_split=0.8, validation_split=0.2, nominal_capacity=1.1, threshold=0):
         """
         Constructor of the dataset.
 
@@ -18,6 +17,8 @@ class SandiaDataset():
             Percentage of the dataset to use for validation. The default is 0.2.
         nominal_capacity : float, optional
             Nominal capacity of the battery. The default is 1.1.
+        threshold : float, optional
+            Threshold for the SoC. The default is 0. This means that the network is trained with data where the SoC is between 1 and 0. Allowed values are between 0 and 1.
 
         Returns
         -------
@@ -30,15 +31,16 @@ class SandiaDataset():
         test_outputs : torch.tensor
             Outputs for testing.
         """
+
         self.train_split = train_split
         self.validation_split = validation_split
         self.nominal_capacity = nominal_capacity
+        self.threshold = threshold
         self.load_dataset(file=file)
         self.clean_dataset()
         self.compute_state_of_charge()
         self.extract_useful_data()
         self.split_and_prepare_dataset()
-        return self.train_inputs, self.train_outputs, self.test_inputs, self.test_outputs
 
     def load_dataset(self, file):
         """
@@ -61,6 +63,7 @@ class SandiaDataset():
         """
         Clean the dataset, mainly removing the lines where the difference between the charge and discharge capacity is smaller than zero
         """
+
         for line in self.data.iterrows():
             if line[1]["Charge_Capacity (Ah)"] - line[1]["Discharge_Capacity (Ah)"] < 0:
                 logging.debug("Removing line %d" % line[0])
@@ -75,7 +78,7 @@ class SandiaDataset():
     
     def compute_state_of_charge(self):
         """
-        Compute the actual capacity
+        Compute the actual capacity and convert it to SoC
         """
         self.data["Capacity"] = self.data["Charge_Capacity (Ah)"] - self.data["Discharge_Capacity (Ah)"]
         # Convert the capacity to SoC
@@ -93,6 +96,9 @@ class SandiaDataset():
         """
         self.train_data = self.data.sample(frac=self.train_split, random_state=1)
         self.test_data = self.data.drop(self.train_data.index)
+        # Remove the data below the threshold
+        self.remove_data_below_threshold(self.train_data)
+        # Extract the inputs and outputs
         self.train_inputs = self.train_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
         self.train_outputs = self.train_data[["Capacity"]]
         self.test_inputs = self.test_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
@@ -107,3 +113,44 @@ class SandiaDataset():
         self.train_outputs = self.train_outputs.float()
         self.test_inputs = self.test_inputs.float()
         self.test_outputs = self.test_outputs.float()
+
+    def remove_data_below_threshold(self, data):
+        """
+        Remove the data below the specified threshold
+
+        Parameters
+        ----------
+        data : pandas.DataFrame
+            Dataframe to remove the data from.
+
+        Returns
+        -------
+        None.
+        """
+        data = data[data["Capacity"] > self.threshold]
+
+    def get_train_data(self):
+        """
+        Get the train data
+
+        Returns
+        -------
+        train_inputs : torch.tensor
+            Inputs for training.
+        train_outputs : torch.tensor
+            Outputs for training.
+        """
+        return self.train_inputs, self.train_outputs
+    
+    def get_test_data(self):
+        """
+        Get the test data
+
+        Returns
+        -------
+        test_inputs : torch.tensor
+            Inputs for testing.
+        test_outputs : torch.tensor
+            Outputs for testing.
+        """
+        return self.test_inputs, self.test_outputs
