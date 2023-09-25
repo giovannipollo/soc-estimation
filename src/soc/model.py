@@ -18,9 +18,22 @@ class PINN_Model(nn.Module):
     The output is:
         - State of Charge (SoC): The SoC is a value between 0 and 1 that indicates the current capacity of the battery.
     """
-    def __init__(self, input_size=4, output_size=1, hidden_size=16):
+    def __init__(self, input_size=3, output_size=1, hidden_size=16):
         """
-        Constructor of the model.
+        Constructor of the model
+
+        Parameters
+        ----------
+        input_size : int, optional
+            Number of inputs of the model. The default is 3.
+        output_size : int, optional
+            Number of outputs of the model. The default is 1.
+        hidden_size : int, optional
+            Number of neurons in the hidden layers. The default is 16.
+        
+        Returns
+        -------
+        None.
         """
         super(PINN_Model, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
