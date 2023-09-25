@@ -41,7 +41,18 @@ class SandiaDataset():
         return self.train_inputs, self.train_outputs, self.test_inputs, self.test_outputs
 
     def load_dataset(self, file):
-        """Prepare sandia dataset"""
+        """
+        Prepare sandia dataset
+
+        Parameters
+        ----------
+        file : str
+            Path to the dataset file.
+
+        Returns
+        -------
+        None.
+        """
         self.data = pd.read_csv(file)
         # Extract the data we want to use
         self.data = self.data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)", "Charge_Capacity (Ah)", "Discharge_Capacity (Ah)"]]
@@ -77,6 +88,9 @@ class SandiaDataset():
         self.data = self.data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)", "Capacity"]]
     
     def split_and_prepare_dataset(self):
+        """
+        Split the dataset into train and test and prepare the data for training by converting them to tensors and to float
+        """
         self.train_data = self.data.sample(frac=self.train_split, random_state=1)
         self.test_data = self.data.drop(self.train_data.index)
         self.train_inputs = self.train_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
