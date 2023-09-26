@@ -42,30 +42,21 @@ class PINN_Model(nn.Module):
         self.fc2 = nn.Linear(hidden_size, hidden_size)
         self.fc3 = nn.Linear(hidden_size, hidden_size)
         self.fc4 = nn.Linear(hidden_size, output_size)
-        self.model = nn.Sequential(
-            self.fc1,
-            nn.ReLU(),
-            self.fc2,
-            nn.ReLU(),
-            self.fc3,
-            nn.ReLU(),
-            self.fc4
-        )
-
+        self.tanh = nn.Tanh()
     def forward(self, x):
         """
         Forward pass of the model.
         """
         output = self.fc1(x)
-        output = nn.functional.relu(output)
+        output = self.tanh(output)
         output = self.fc2(output)
-        output = nn.functional.relu(output)
+        output = self.tanh(output)
         output = self.fc3(output)
-        output = nn.functional.relu(output)
+        output = self.tanh(output)
         output = self.fc4(output)
         return output
 
-    def loss(self, x, y, physics_x = None, physics_informed=False, pinn_type=None, capacity = 0):
+    def loss(self, x, y, physics_x = None, physics_informed=False, pinn_type="cc", capacity = 0):
         """
         Loss function of the model.
 
@@ -99,15 +90,17 @@ class PINN_Model(nn.Module):
                 physics_loss = self.physics_loss_soc_de(physics_x, capacity=capacity)
             elif pinn_type == "rint":
                 physics_loss = self.physics_loss_Rint(physics_x, y)
+            else:
+                physics_loss = 0
         else:
             physics_loss = 0
         
         # Weights for each contribution of the loss
         data_weight = 1
-        physics_weight = 1
+        physics_weight = 0.01
         # Log the losses
-        logging.debug("Data loss: " + str(data_loss))
-        logging.debug("Physics loss: " + str(physics_loss))
+        logging.info("Data loss: " + str(data_loss))
+        logging.info("Physics loss: " + str(physics_loss))
         # Return the weighted sum of the losses
         return data_weight*data_loss + physics_weight*physics_loss
     
@@ -200,8 +193,7 @@ class PINN_Model(nn.Module):
         d_soc_dt = torch.autograd.grad(estimated_soc, time_step, grad_outputs=torch.ones_like(time_step), create_graph=True)[0]
         # Compute the equation loss
         logging.debug("d_soc_dt: ", d_soc_dt)
-        eq_loss = torch.sum(torch.abs(d_soc_dt + current / (3600 * capacity)))
-        logging.debug("Eq loss: ", eq_loss)
+        eq_loss = nn.functional.mse_loss(d_soc_dt, -current / (3600 * capacity))
         return eq_loss
     
     def plot_epoch_loss(self, train_loss, validation_loss, epoch):
