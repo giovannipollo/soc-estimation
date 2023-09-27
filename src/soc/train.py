@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 from dataset.sandia import SandiaDataset
+from plot.plot import plot_epoch_prediction_test, plot_epoch_prediction_physic
 
 
 def train():
@@ -126,124 +127,6 @@ def setup_logging(level=logging.INFO):
     file_handler.setFormatter(formatter)
     # Add the file handler to the logger
     logger.addHandler(file_handler)
-
-
-def plot_epoch_prediction_test(epoch, model, test_inputs, test_outputs):
-    """
-    Plot the prediction of the model for the test data
-
-    Parameters
-    ----------
-    epoch : int
-        Current epoch.
-    model : PINN_Model
-        Model to use for the prediction.
-    test_inputs : torch.tensor
-        Inputs of the test data.
-    test_outputs : torch.tensor
-        Outputs of the test data.
-
-    Returns
-    -------
-    None.
-    """
-    # Plot the prediction for the test data
-    plt.figure()
-    plt.scatter(
-        test_inputs[:, 0].detach().numpy(),
-        test_outputs.detach().numpy(),
-        label="True SoC",
-    )
-    plt.scatter(
-        test_inputs[:, 0].detach().numpy(),
-        model.forward(test_inputs).detach().numpy(),
-        label="Predicted SoC",
-    )
-    plt.xlabel("Time (s)")
-    plt.ylabel("SoC")
-    plt.legend()
-    plt.savefig("plots/epoch.png")
-    plt.close()
-
-
-def plot_epoch_predictions_train(epoch, model, train_inputs, train_outputs):
-    """
-    Plot the prediction of the model for the train data
-
-    Parameters
-    ----------
-    epoch : int
-        Current epoch.
-    model : PINN_Model
-        Model to use for the prediction.
-    train_inputs : torch.tensor
-        Inputs of the train data.
-    train_outputs : torch.tensor
-        Outputs of the train data.
-
-    Returns
-    -------
-    None.
-    """
-    # Plot the prediction for the train data
-    plt.figure()
-    # Plot the points without the line
-    plt.scatter(
-        train_inputs[:, 0].detach().numpy(),
-        train_outputs.detach().numpy(),
-        label="True SoC",
-        s=1,
-    )
-    plt.scatter(
-        train_inputs[:, 0].detach().numpy(),
-        model.forward(train_inputs).detach().numpy(),
-        label="Predicted SoC",
-        s=1,
-    )
-    plt.xlabel("Time (s)")
-    plt.ylabel("SoC")
-    plt.legend()
-    plt.savefig("plots/epoch_%d_train.png" % epoch)
-    plt.close()
-
-
-def plot_epoch_prediction_physic(epoch, model, physics_inputs, physics_outputs):
-    """
-    Plot the prediction of the model for the physics data
-
-    Parameters
-    ----------
-    epoch : int
-        Current epoch.
-    model : PINN_Model
-        Model to use for the prediction.
-    physics_inputs : torch.tensor
-        Inputs of the physics data.
-
-    Returns
-    -------
-    None.
-    """
-    # Plot the prediction for the physics data
-    plt.figure()
-    plt.scatter(
-        physics_inputs[:, 0].detach().numpy(),
-        model.forward(physics_inputs).detach().numpy(),
-        label="Predicted SoC Physics",
-        s=1,
-    )
-    plt.scatter(
-        physics_inputs[:, 0].detach().numpy(),
-        physics_outputs.detach().numpy(),
-        label="True SoC Physics",
-        s=1,
-    )
-    plt.scatter
-    plt.xlabel("Time (s)")
-    plt.ylabel("SoC")
-    plt.legend()
-    plt.savefig("plots/epoch_physic.png")
-    plt.close()
 
 
 if __name__ == "__main__":
