@@ -119,9 +119,9 @@ class SandiaDataset():
         self.physics_inputs = self.physics_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
         self.physics_outputs = self.physics_data[["Capacity"]]
         # Save the train and test data
-        self.train_data.to_csv("train_data.csv")
-        self.test_data.to_csv("test_data.csv")
-        self.physics_data.to_csv("physics_data.csv")
+        self.train_data.to_csv("data/temp_data/train_data.csv")
+        self.test_data.to_csv("data/temp_data/test_data.csv")
+        self.physics_data.to_csv("data/temp_data/physics_data.csv")
         # Convert the Test_Time (s) to hours
         self.train_inputs["Test_Time (s)"] = self.train_inputs["Test_Time (s)"] / 3600
         self.test_inputs["Test_Time (s)"] = self.test_inputs["Test_Time (s)"] / 3600
