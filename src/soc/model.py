@@ -11,8 +11,9 @@ from soc_ocv.model_soc_ocv import Model_Soc_Ocv
 
 class PINN_Model(nn.Module):
     """
-    Model class. The model must have 3 inputs and 1 output.
+    Model class. The model must have 4 inputs and 1 output.
     The inputs are:
+        - Time step: Time step of the battery
         - Voltage: Voltage of the battery
         - Current: Current of the battery
         - Temperature: Temperature of the battery
@@ -27,7 +28,7 @@ class PINN_Model(nn.Module):
         Parameters
         ----------
         input_size : int, optional
-            Number of inputs of the model. The default is 3.
+            Number of inputs of the model. The default is 4.
         output_size : int, optional
             Number of outputs of the model. The default is 1.
         hidden_size : int, optional
@@ -159,11 +160,11 @@ class PINN_Model(nn.Module):
     def physics_loss_soc_de(self, x, capacity):
         """
         Equation loss of the model. The equation is the following:
-        dSoC/dt = -I / (3600 * C)
+        dSoC/dt = I / C
         where:
             - dSoC/dt: Rate of change of the SoC
-            - I: Current
-            - C: Capacity in Ah
+            - I: Current in Ah
+            - C: Nominal Capacity of the battery in Ah
 
         Parameters
         ----------
@@ -193,7 +194,7 @@ class PINN_Model(nn.Module):
         d_soc_dt = torch.autograd.grad(estimated_soc, time_step, grad_outputs=torch.ones_like(time_step), create_graph=True)[0]
         # Compute the equation loss
         logging.debug("d_soc_dt: ", d_soc_dt)
-        eq_loss = nn.functional.mse_loss(d_soc_dt, -current / (3600 * capacity))
+        eq_loss = nn.functional.mse_loss(d_soc_dt, current / capacity)
         return eq_loss
     
     def plot_epoch_loss(self, train_loss, validation_loss, epoch):

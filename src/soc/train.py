@@ -41,7 +41,7 @@ def train():
     # Create the optimizer
     optimizer = optim.Adam(model.parameters(), lr=initial_lr)
     # Create a learning rate scheduler
-    # scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=500, min_lr=1e-6)
+    scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=500, min_lr=1e-6)
     # Initialize other training parameters
     best_loss = float("inf")
     # Number of epochs to wait before stopping if validation loss increases
@@ -58,7 +58,7 @@ def train():
             validation_loss = model.validation_loss(test_inputs, test_outputs).item()
             logging.info("Epoch: %d, Validation loss: %f, Best Validation loss: %f" % (epoch, validation_loss, best_loss))
             # Update the learning rate scheduler based on the validation loss
-            # scheduler.step(validation_loss)
+            scheduler.step(validation_loss)
             # Check if validation loss is increasing
             if validation_loss < best_loss:
                 best_loss = validation_loss
