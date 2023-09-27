@@ -89,7 +89,7 @@ class PINN_Model(nn.Module):
             Loss of the model computed summing the mean squared error and the physics loss.
         """
         # Loss driven by data
-        data_loss = nn.functional.mse_loss(self.forward(x), y)
+        data_loss = nn.MSELoss(self.forward(x), y)
         # Loss driven by physics
         if physics_informed:
             if pinn_type == "cc":
@@ -127,7 +127,7 @@ class PINN_Model(nn.Module):
             Loss of the model computed using the mean squared error.
         """
         output = self.forward(x)
-        return nn.functional.mse_loss(output, y)
+        return nn.MSELoss(output, y)
 
     def physics_loss_Rint(self, x, y):
         """
@@ -208,7 +208,7 @@ class PINN_Model(nn.Module):
         )[0]
         # Compute the equation loss
         logging.debug("d_soc_dt: ", d_soc_dt)
-        eq_loss = nn.functional.mse_loss(d_soc_dt, current / capacity)
+        eq_loss = nn.MSELoss(d_soc_dt, current / capacity)
         return eq_loss
 
     def plot_epoch_loss(self, train_loss, validation_loss, epoch):
