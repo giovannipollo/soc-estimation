@@ -1,10 +1,19 @@
 import logging
-import torch    
+import torch
 import pandas as pd
 import numpy as np
 
-class SandiaDataset():
-    def __init__(self, file, train_cycles=80, test_cycles=20, physics_cycles=10, nominal_capacity=1.1, threshold=0):
+
+class SandiaDataset:
+    def __init__(
+        self,
+        file,
+        train_cycles=80,
+        test_cycles=20,
+        physics_cycles=10,
+        nominal_capacity=1.1,
+        threshold=0,
+    ):
         """
         Constructor of the dataset.
 
@@ -59,7 +68,17 @@ class SandiaDataset():
         """
         self.data = pd.read_csv(file)
         # Extract the data we want to use
-        self.data = self.data[["Test_Time (s)", "Cycle_Index", "Voltage (V)", "Current (A)", "Cell_Temperature (C)", "Charge_Capacity (Ah)", "Discharge_Capacity (Ah)"]]
+        self.data = self.data[
+            [
+                "Test_Time (s)",
+                "Cycle_Index",
+                "Voltage (V)",
+                "Current (A)",
+                "Cell_Temperature (C)",
+                "Charge_Capacity (Ah)",
+                "Discharge_Capacity (Ah)",
+            ]
+        ]
 
     def clean_dataset(self):
         """
@@ -70,19 +89,23 @@ class SandiaDataset():
             if line[1]["Charge_Capacity (Ah)"] - line[1]["Discharge_Capacity (Ah)"] < 0:
                 logging.debug("Removing line %d" % line[0])
                 self.data.drop(line[0], inplace=True)
-    
+
     def convert_capacity_to_soc(self):
         """
         Convert the capacity to SoC
         """
-        self.data["Capacity"] = self.data["Charge_Capacity (Ah)"] - self.data["Discharge_Capacity (Ah)"]
+        self.data["Capacity"] = (
+            self.data["Charge_Capacity (Ah)"] - self.data["Discharge_Capacity (Ah)"]
+        )
         self.data["Capacity"] = self.data["Capacity"] / self.nominal_capacity
-    
+
     def compute_state_of_charge(self):
         """
         Compute the actual capacity and convert it to SoC
         """
-        self.data["Capacity"] = self.data["Charge_Capacity (Ah)"] - self.data["Discharge_Capacity (Ah)"]
+        self.data["Capacity"] = (
+            self.data["Charge_Capacity (Ah)"] - self.data["Discharge_Capacity (Ah)"]
+        )
         # Convert the capacity to SoC
         self.convert_capacity_to_soc()
 
@@ -90,8 +113,17 @@ class SandiaDataset():
         """
         Extract the useful data from the dataset
         """
-        self.data = self.data[["Test_Time (s)", "Cycle_Index", "Voltage (V)", "Current (A)", "Cell_Temperature (C)", "Capacity"]]
-    
+        self.data = self.data[
+            [
+                "Test_Time (s)",
+                "Cycle_Index",
+                "Voltage (V)",
+                "Current (A)",
+                "Cell_Temperature (C)",
+                "Capacity",
+            ]
+        ]
+
     def split_and_prepare_dataset(self):
         """
         Split the dataset into train and test by using the specified number of cycles taken randomly from the dataset
@@ -102,9 +134,14 @@ class SandiaDataset():
         # Shuffle the cycles
         # np.random.shuffle(cycles)
         # Get the train and test cycles
-        train_cycles = cycles[0:self.train_cycles]
-        test_cycles = cycles[self.train_cycles:self.train_cycles + self.test_cycles]
-        physics_cycles = cycles[self.train_cycles + self.test_cycles:self.train_cycles + self.test_cycles + self.physics_cycles]
+        train_cycles = cycles[0 : self.train_cycles]
+        test_cycles = cycles[self.train_cycles : self.train_cycles + self.test_cycles]
+        physics_cycles = cycles[
+            self.train_cycles
+            + self.test_cycles : self.train_cycles
+            + self.test_cycles
+            + self.physics_cycles
+        ]
         # Get the train and test data
         self.train_data = self.data[self.data["Cycle_Index"].isin(train_cycles)]
         self.test_data = self.data[self.data["Cycle_Index"].isin(test_cycles)]
@@ -112,11 +149,17 @@ class SandiaDataset():
         # Remove the data below the threshold
         self.train_data = self.remove_data_below_threshold(data=self.train_data)
         # Extract the inputs and outputs
-        self.train_inputs = self.train_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
+        self.train_inputs = self.train_data[
+            ["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]
+        ]
         self.train_outputs = self.train_data[["Capacity"]]
-        self.test_inputs = self.test_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
+        self.test_inputs = self.test_data[
+            ["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]
+        ]
         self.test_outputs = self.test_data[["Capacity"]]
-        self.physics_inputs = self.physics_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
+        self.physics_inputs = self.physics_data[
+            ["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]
+        ]
         self.physics_outputs = self.physics_data[["Capacity"]]
         # Save the train and test data
         self.train_data.to_csv("data/temp_data/train_data.csv")
@@ -125,14 +168,22 @@ class SandiaDataset():
         # Convert the Test_Time (s) to hours
         self.train_inputs["Test_Time (s)"] = self.train_inputs["Test_Time (s)"] / 3600
         self.test_inputs["Test_Time (s)"] = self.test_inputs["Test_Time (s)"] / 3600
-        self.physics_inputs["Test_Time (s)"] = self.physics_inputs["Test_Time (s)"] / 3600
+        self.physics_inputs["Test_Time (s)"] = (
+            self.physics_inputs["Test_Time (s)"] / 3600
+        )
         # Convert the inputs and outputs to tensors
         self.train_inputs = torch.tensor(self.train_inputs.values, dtype=torch.float32)
-        self.train_outputs = torch.tensor(self.train_outputs.values, dtype=torch.float32)
+        self.train_outputs = torch.tensor(
+            self.train_outputs.values, dtype=torch.float32
+        )
         self.test_inputs = torch.tensor(self.test_inputs.values, dtype=torch.float32)
         self.test_outputs = torch.tensor(self.test_outputs.values, dtype=torch.float32)
-        self.physics_inputs = torch.tensor(self.physics_inputs.values, dtype=torch.float32)
-        self.physics_outputs = torch.tensor(self.physics_outputs.values, dtype=torch.float32)
+        self.physics_inputs = torch.tensor(
+            self.physics_inputs.values, dtype=torch.float32
+        )
+        self.physics_outputs = torch.tensor(
+            self.physics_outputs.values, dtype=torch.float32
+        )
 
     def remove_data_below_threshold(self, data):
         """
@@ -161,7 +212,7 @@ class SandiaDataset():
             Outputs for training.
         """
         return self.train_inputs, self.train_outputs
-    
+
     def get_test_data(self):
         """
         Get the test data
@@ -174,7 +225,7 @@ class SandiaDataset():
             Outputs for testing.
         """
         return self.test_inputs, self.test_outputs
-    
+
     def get_physics_input(self):
         """
         Get the physics data
@@ -187,6 +238,7 @@ class SandiaDataset():
             Outputs for physics.
         """
         return self.physics_inputs
+
     def get_physics_output(self):
         """
         Get the physics data
@@ -213,4 +265,6 @@ class SandiaDataset():
                 logging.debug("Resetting time to zero for line %d" % line[0])
                 self.data.at[line[0], "Test_Time (s)"] = 0
             else:
-                self.data.at[line[0], "Test_Time (s)"] = line[1]["Test_Time (s)"] - initial_time
+                self.data.at[line[0], "Test_Time (s)"] = (
+                    line[1]["Test_Time (s)"] - initial_time
+                )

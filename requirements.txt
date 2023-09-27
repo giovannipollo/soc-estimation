@@ -3,3 +3,4 @@ numpy
 matplotlib
 pandas
 scipy
+black
