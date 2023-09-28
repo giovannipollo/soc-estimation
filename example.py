@@ -6,11 +6,11 @@ from PIL import Image
 
 def physics_loss_soc_de(model, x, capacity, current = None):
     time_step = x[:, 0].clone().detach().requires_grad_(True)
-    # voltage = x[:, 1].clone().detach().requires_grad_(True)
-    current_in = x[:, 1].clone().detach().requires_grad_(True)
-    # temperature = x[:, 3].clone().detach().requires_grad_(True)
+    voltage = x[:, 1].clone().detach().requires_grad_(True)
+    current_in = x[:, 2].clone().detach().requires_grad_(True)
+    temperature = x[:, 3].clone().detach().requires_grad_(True)
     # Define the physics inputs
-    physics_input = torch.stack((time_step, current_in), dim=1)
+    physics_input = torch.stack((time_step, voltage, current_in, temperature), dim=1)
     # Compute the estimated SoC
     estimated_soc = model.forward(physics_input)
     estimated_soc = torch.flatten(estimated_soc)
@@ -31,25 +31,25 @@ if __name__ == "__main__":
     # limit the number of threads
     torch.set_num_threads(6)
     # Open the data file
-    train_data = pd.read_csv("train_data.csv")
+    train_data = pd.read_csv("data/temp_data/train_data.csv")
     # Only keep the value whose Capacity is between 1 and 0.5
-    train_data = train_data[(train_data["Capacity"] < 1) & (train_data["Capacity"] > 0.5)]
-    test_data = pd.read_csv("test_data.csv")
-    physics_data = pd.read_csv("physics_data.csv")
+    # train_data = train_data[(train_data["Capacity"] < 1) & (train_data["Capacity"] > 0.5)]
+    test_data = pd.read_csv("data/temp_data/test_data.csv")
+    physics_data = pd.read_csv("data/temp_data/physics_data.csv")
     # Keep only the column with specific names
     train_data = train_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)", "Capacity"]]
-    # train_input = train_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
-    train_input = train_data[["Test_Time (s)", "Current (A)"]]
+    train_input = train_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
+    # train_input = train_data[["Test_Time (s)", "Current (A)"]]
     train_output = train_data[["Capacity"]]
 
     test_data = test_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)", "Capacity"]]
-    # test_input = test_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
-    test_input = test_data[["Test_Time (s)", "Current (A)"]]
+    test_input = test_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
+    # test_input = test_data[["Test_Time (s)", "Current (A)"]]
     test_output = test_data[["Capacity"]]
 
     physics_data = physics_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)", "Capacity"]]
-    # physics_input = physics_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
-    physics_input = physics_data[["Test_Time (s)", "Current (A)"]]
+    physics_input = physics_data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
+    # physics_input = physics_data[["Test_Time (s)", "Current (A)"]]
     physics_current = physics_data[["Current (A)"]]
     physics_output = physics_data[["Capacity"]]
     # Divide the Test_Time by 3600 to get the time in hours
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     torch.manual_seed(0)
     # Define the model of the network to approximate a sine function
     model = nn.Sequential(
-        nn.Linear(2, 20), 
+        nn.Linear(4, 20), 
         nn.Tanh(), 
         nn.Linear(20, 20), 
         nn.Tanh(), 
@@ -120,7 +120,7 @@ if __name__ == "__main__":
         # else:
         #     loss = 0.01*loss + 0.1*physics_loss_soc_de(model=model, x=physics_input, capacity=1.1, current=physics_current)
 
-        # loss = loss + 0.0001*physics_loss_soc_de(model=model, x=physics_input, capacity=1.1, current=physics_current)
+        loss = loss + 0.0001*physics_loss_soc_de(model=model, x=physics_input, capacity=1.1, current=physics_current)
         # Compute the gradients
         # loss = loss + physics_loss
         loss.backward()
@@ -130,19 +130,19 @@ if __name__ == "__main__":
         print("Epoch: %d, Train loss: %f" % (epoch, loss.item()))
         print("Epoch: %d, Physics loss: %f" % (epoch, physics_loss))
         # Check if the validation loss is the best
-        # if validation_loss.item() < best_val_loss:
-        #     best_val_loss = validation_loss.item()
-        #     print("Best validation loss: %f" % best_val_loss)
-        #     # Save the model weights
-        #     torch.save(model.state_dict(), "model_weights.pth")
-        #     output = model(test_input)
-        #     plt.figure()
-        #     # Plot the ground truth with the test time on the x-axis
-        #     plt.scatter(test_input[:, 0].detach().numpy(), output.detach().numpy(), label="Prediction")
-        #     plt.scatter(test_input[:, 0].detach().numpy(), test_output.detach().numpy(), label="Ground truth")
-        #     plt.legend()
-        #     plt.savefig("plots/test_prediction_epoch_best.png")
-        #     plt.close()
+        if validation_loss.item() < best_val_loss:
+            best_val_loss = validation_loss.item()
+            print("Best validation loss: %f" % best_val_loss)
+            # Save the model weights
+            torch.save(model.state_dict(), "model_weights.pth")
+            output = model(test_input)
+            plt.figure()
+            # Plot the ground truth with the test time on the x-axis
+            plt.scatter(test_input[:, 0].detach().numpy(), output.detach().numpy(), label="Prediction")
+            plt.scatter(test_input[:, 0].detach().numpy(), test_output.detach().numpy(), label="Ground truth")
+            plt.legend()
+            plt.savefig("plots/test_prediction_epoch_best.png")
+            plt.close()
         # if loss.item() < best_train_loss:
         #     best_train_loss = loss.item()
         #     output = model(train_input)

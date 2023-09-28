@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 from dataset.sandia import SandiaDataset
-from plot.plot import plot_epoch_prediction_test, plot_epoch_prediction_physic
+from plot.plot import Plot
 
 
 def train():
@@ -29,6 +29,7 @@ def train():
         nominal_capacity=1.1,
         threshold=0.8,
     )
+    plot = Plot()
     train_inputs, train_outputs = dataset.get_train_data()
     test_inputs, test_outputs = dataset.get_test_data()
     physics_inputs = dataset.get_physics_input()
@@ -43,7 +44,7 @@ def train():
     # Create the optimizer
     optimizer = optim.Adam(model.parameters(), lr=initial_lr)
     # Create a learning rate scheduler
-    scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=500, min_lr=1e-6)
+    # scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=500, min_lr=1e-6)
     # Initialize other training parameters
     best_train_loss = float("inf")
     best_validation_loss = float("inf")
@@ -51,33 +52,39 @@ def train():
     logging.debug("Starting training")
     # Set the patience to a huge value to avoid early stopping
     patience = 80000000
-    for epoch in range(200000):
+    for epoch in range(50000):
         # Plot the prediction for the train data
         # if epoch % 100 == 0:
         #     plot_epoch_predictions_train(epoch = epoch, model = model, train_inputs = train_inputs, train_outputs = train_outputs)
+        # Calculate the validation loss
+        validation_loss = model.validation_loss(x=test_inputs, y=test_outputs).item()
         if epoch % 1000 == 0:
-            plot_epoch_prediction_test(
+            plot.plot_epoch_predictions_train(
+                epoch=epoch,
+                model=model,
+                train_inputs=train_inputs,
+                train_outputs=train_outputs,
+            )
+            plot.plot_epoch_prediction_test(
                 epoch=epoch,
                 model=model,
                 test_inputs=test_inputs,
                 test_outputs=test_outputs,
+                validation_loss=validation_loss,
             )
-            plot_epoch_prediction_physic(
+            plot.plot_epoch_prediction_physic(
                 epoch=epoch,
                 model=model,
                 physics_inputs=physics_inputs,
                 physics_outputs=physics_outputs,
             )
-            # Calculate the validation loss
-            validation_loss = model.validation_loss(
-                x=test_inputs, y=test_outputs
-            ).item()
+
             logging.info(
                 "Epoch: %d, Validation loss: %f, Best Validation loss: %f"
                 % (epoch, validation_loss, best_validation_loss)
             )
             # Update the learning rate scheduler based on the validation loss
-            scheduler.step(validation_loss)
+            # scheduler.step(validation_loss)
             # Check if validation loss is increasing
             if validation_loss < best_validation_loss:
                 best_validation_loss = validation_loss
@@ -98,6 +105,11 @@ def train():
             physics_x=physics_inputs,
             capacity=1.1,
         )
+        # Log the loss
+        logging.info("Train loss: %f" % train_loss.item())
+        if train_loss.item() < best_train_loss:
+            best_train_loss = train_loss.item()
+            logging.debug("Best train loss: %f" % best_train_loss)
         # Backward pass
         train_loss.backward()
         # Update the weights
@@ -105,8 +117,21 @@ def train():
     # Calculate the loss
     validation_loss = model.validation_loss(test_inputs, test_outputs)
     # Log the loss
-    logging.info("Test loss: %f" % validation_loss.item())
+    logging.info("Validation loss: %f" % validation_loss.item())
     logging.info("Best validation loss: %f" % best_validation_loss)
+    # Create the gifs
+    plot.save_gif_PIL(
+        outfile="plots/gif/epoch_predictions_train.gif",
+        files=plot.plot_epoch_predictions_train_plots,
+    )
+    plot.save_gif_PIL(
+        outfile="plots/gif/epoch_predictions_test.gif",
+        files=plot.plot_epoch_prediction_test_plots,
+    )
+    plot.save_gif_PIL(
+        outfile="plots/gif/epoch_predictions_physics.gif",
+        files=plot.plot_epoch_prediction_physic_plots,
+    )
     # Save the model
     torch.save(model.state_dict(), "pth_models/model_soc_pinn.pth")
 

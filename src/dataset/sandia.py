@@ -8,8 +8,8 @@ class SandiaDataset:
     def __init__(
         self,
         file,
-        train_cycles=80,
-        test_cycles=20,
+        train_cycles=1,
+        test_cycles=1,
         physics_cycles=10,
         nominal_capacity=1.1,
         threshold=0,

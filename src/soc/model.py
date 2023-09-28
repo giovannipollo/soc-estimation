@@ -89,7 +89,8 @@ class PINN_Model(nn.Module):
             Loss of the model computed summing the mean squared error and the physics loss.
         """
         # Loss driven by data
-        data_loss = nn.MSELoss(self.forward(x), y)
+        data_loss_function = nn.MSELoss()
+        data_loss = data_loss_function(self.forward(x), y)
         # Loss driven by physics
         if physics_informed:
             if pinn_type == "cc":
@@ -103,7 +104,7 @@ class PINN_Model(nn.Module):
 
         # Weights for each contribution of the loss
         data_weight = 1
-        physics_weight = 0.01
+        physics_weight = 0.0001
         # Log the losses
         logging.info("Data loss: " + str(data_loss))
         logging.info("Physics loss: " + str(physics_loss))
@@ -127,7 +128,8 @@ class PINN_Model(nn.Module):
             Loss of the model computed using the mean squared error.
         """
         output = self.forward(x)
-        return nn.MSELoss(output, y)
+        validation_loss_function = nn.MSELoss()
+        return validation_loss_function(output, y)
 
     def physics_loss_Rint(self, x, y):
         """
@@ -208,7 +210,8 @@ class PINN_Model(nn.Module):
         )[0]
         # Compute the equation loss
         logging.debug("d_soc_dt: ", d_soc_dt)
-        eq_loss = nn.MSELoss(d_soc_dt, current / capacity)
+        eq_loss_function = nn.MSELoss()
+        eq_loss = eq_loss_function(d_soc_dt, current / capacity)
         return eq_loss
 
     def plot_epoch_loss(self, train_loss, validation_loss, epoch):

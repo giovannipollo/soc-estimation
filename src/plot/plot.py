@@ -8,7 +8,16 @@ class Plot:
         self.plot_epoch_prediction_test_plots = []
         self.plot_epoch_prediction_physic_plots = []
 
-    def plot_epoch_prediction_test(self, epoch, model, test_inputs, test_outputs):
+    def get_plot_epoch_predictions_train_plots(self):
+        return self.plot_epoch_predictions_train_plots
+    
+    def get_plot_epoch_prediction_test_plots(self):
+        return self.plot_epoch_prediction_test_plots
+    
+    def get_plot_epoch_prediction_physic_plots(self):
+        return self.plot_epoch_prediction_physic_plots
+    
+    def plot_epoch_prediction_test(self, epoch, model, test_inputs, test_outputs, validation_loss):
         """
         Plot the prediction of the model for the test data
 
@@ -28,7 +37,11 @@ class Plot:
         None.
         """
         # Plot the prediction for the test data
-        plt.figure()
+        plt.figure(figsize=(8,4))
+        l = plt.legend(loc=(1.01,0.34), frameon=False, fontsize="large")
+        plt.setp(l.get_texts(), color="k")
+        # Place the epoch number on the plot
+        plt.text(0.3, 1.1, "Epoch: %d, MSELoss: %f" % (epoch, validation_loss), transform=plt.gca().transAxes)
         plt.scatter(
             test_inputs[:, 0].detach().numpy(),
             test_outputs.detach().numpy(),
@@ -66,7 +79,11 @@ class Plot:
         None.
         """
         # Plot the prediction for the train data
-        plt.figure()
+        plt.figure(figsize=(8,4))
+        l = plt.legend(loc=(1.01,0.34), frameon=False, fontsize="large")
+        plt.setp(l.get_texts(), color="k")
+        # Place the epoch number on the plot
+        plt.text(0.5, 1.1, "Epoch: %d" % epoch, transform=plt.gca().transAxes)
         # Plot the points without the line
         plt.scatter(
             train_inputs[:, 0].detach().numpy(),
@@ -107,7 +124,11 @@ class Plot:
         None.
         """
         # Plot the prediction for the physics data
-        plt.figure()
+        plt.figure(figsize=(8,4))
+        l = plt.legend(loc=(1.01,0.34), frameon=False, fontsize="large")
+        plt.setp(l.get_texts(), color="k")
+        # Place the epoch number on the plot
+        plt.text(0.5, 1.1, "Epoch: %d" % epoch, transform=plt.gca().transAxes)
         plt.scatter(
             physics_inputs[:, 0].detach().numpy(),
             model.forward(physics_inputs).detach().numpy(),
@@ -128,7 +149,7 @@ class Plot:
         self.plot_epoch_prediction_physic_plots.append(plt)
         plt.close()
 
-    def save_gif_PIL(outfile, files, fps=5, loop=0):
+    def save_gif_PIL(self, outfile, files, fps=5, loop=0):
         imgs = [Image.open(file) for file in files]
         imgs[0].save(
             fp=outfile,
