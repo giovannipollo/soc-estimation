@@ -55,8 +55,9 @@ class Plot:
         plt.xlabel("Time (s)")
         plt.ylabel("SoC")
         plt.legend()
-        plt.savefig("plots/test/epoch_%d_test.png" % epoch)
-        self.plot_epoch_prediction_test_plots.append(plt)
+        filename = "plots/test/epoch_%d_test.png" % epoch
+        plt.savefig(filename)
+        self.plot_epoch_prediction_test_plots.append(filename)
         plt.close()
 
     def plot_epoch_predictions_train(self, epoch, model, train_inputs, train_outputs):
@@ -100,8 +101,9 @@ class Plot:
         plt.xlabel("Time (s)")
         plt.ylabel("SoC")
         plt.legend()
-        plt.savefig("plots/train/epoch_%d_train.png" % epoch)
-        self.plot_epoch_predictions_train_plots.append(plt)
+        filename = "plots/train/epoch_%d_train.png" % epoch
+        plt.savefig(filename)
+        self.plot_epoch_predictions_train_plots.append(filename)
         plt.close()
 
     def plot_epoch_prediction_physic(
@@ -145,8 +147,9 @@ class Plot:
         plt.xlabel("Time (s)")
         plt.ylabel("SoC")
         plt.legend()
-        plt.savefig("plots/physics/epoch_%d_physics.png" % epoch)
-        self.plot_epoch_prediction_physic_plots.append(plt)
+        filename = "plots/physics/epoch_%d_physics.png" % epoch
+        plt.savefig(filename)
+        self.plot_epoch_prediction_physic_plots.append(filename)
         plt.close()
 
     def save_gif_PIL(self, outfile, files, fps=5, loop=0):

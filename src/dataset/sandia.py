@@ -12,7 +12,10 @@ class SandiaDataset:
         test_cycles=1,
         physics_cycles=10,
         nominal_capacity=1.1,
-        threshold=0,
+        data_top_threshold=1,
+        data_bottom_threshold=0,
+        physics_top_threshold=1,
+        physics_bottom_threshold=0,
     ):
         """
         Constructor of the dataset.
@@ -45,7 +48,10 @@ class SandiaDataset:
         self.test_cycles = test_cycles
         self.physics_cycles = physics_cycles
         self.nominal_capacity = nominal_capacity
-        self.threshold = threshold
+        self.data_top_threshold = data_top_threshold
+        self.data_bottom_threshold = data_bottom_threshold
+        self.physics_top_threshold = physics_top_threshold
+        self.physics_bottom_threshold = physics_bottom_threshold
         self.load_dataset(file=file)
         self.clean_dataset()
         self.reset_time_to_zero_when_new_cycle_starts()
@@ -147,7 +153,16 @@ class SandiaDataset:
         self.test_data = self.data[self.data["Cycle_Index"].isin(test_cycles)]
         self.physics_data = self.data[self.data["Cycle_Index"].isin(physics_cycles)]
         # Remove the data below the threshold
-        self.train_data = self.remove_data_below_threshold(data=self.train_data)
+        self.train_data = self.remove_data_below_threshold(
+            data=self.train_data,
+            top_threshold=self.data_top_threshold,
+            bottom_threshold=self.data_bottom_threshold,
+        )
+        self.physics_data = self.remove_data_below_threshold(
+            data=self.physics_data,
+            top_threshold=self.physics_top_threshold,
+            bottom_threshold=self.physics_bottom_threshold
+        )
         # Extract the inputs and outputs
         self.train_inputs = self.train_data[
             ["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]
@@ -185,7 +200,7 @@ class SandiaDataset:
             self.physics_outputs.values, dtype=torch.float32
         )
 
-    def remove_data_below_threshold(self, data):
+    def remove_data_below_threshold(self, data, top_threshold, bottom_threshold):
         """
         Remove the data below the specified threshold
 
@@ -198,7 +213,9 @@ class SandiaDataset:
         -------
         None.
         """
-        return data[data["Capacity"] > self.threshold]
+        return data[
+            (data["Capacity"] > bottom_threshold) & (data["Capacity"] < top_threshold)
+        ]
 
     def get_train_data(self):
         """

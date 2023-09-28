@@ -27,7 +27,10 @@ def train():
         test_cycles=1,
         physics_cycles=1,
         nominal_capacity=1.1,
-        threshold=0.8,
+        data_top_threshold=1,
+        data_bottom_threshold=0.8,
+        physics_top_threshold=1,
+        physics_bottom_threshold=0.3
     )
     plot = Plot()
     train_inputs, train_outputs = dataset.get_train_data()
@@ -52,13 +55,20 @@ def train():
     logging.debug("Starting training")
     # Set the patience to a huge value to avoid early stopping
     patience = 80000000
-    for epoch in range(50000):
-        # Plot the prediction for the train data
-        # if epoch % 100 == 0:
-        #     plot_epoch_predictions_train(epoch = epoch, model = model, train_inputs = train_inputs, train_outputs = train_outputs)
+    for epoch in range(150000):
+        # Reset the gradients
+        optimizer.zero_grad()
+        # Calculate the train loss
+        train_loss = model.loss(
+            x=train_inputs,
+            y=train_outputs,
+            physics_informed=True,
+            physics_x=physics_inputs,
+            capacity=1.1,
+        )
         # Calculate the validation loss
         validation_loss = model.validation_loss(x=test_inputs, y=test_outputs).item()
-        if epoch % 1000 == 0:
+        if epoch % 500 == 0:
             plot.plot_epoch_predictions_train(
                 epoch=epoch,
                 model=model,
@@ -78,7 +88,6 @@ def train():
                 physics_inputs=physics_inputs,
                 physics_outputs=physics_outputs,
             )
-
             logging.info(
                 "Epoch: %d, Validation loss: %f, Best Validation loss: %f"
                 % (epoch, validation_loss, best_validation_loss)
@@ -95,16 +104,6 @@ def train():
                     logging.info("Best validation loss: %f" % best_validation_loss)
                     logging.info("Early stopping at epoch %d" % epoch)
                     break
-        # Reset the gradients
-        optimizer.zero_grad()
-        # Calculate the loss
-        train_loss = model.loss(
-            x=train_inputs,
-            y=train_outputs,
-            physics_informed=True,
-            physics_x=physics_inputs,
-            capacity=1.1,
-        )
         # Log the loss
         logging.info("Train loss: %f" % train_loss.item())
         if train_loss.item() < best_train_loss:
