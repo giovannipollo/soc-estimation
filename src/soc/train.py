@@ -20,23 +20,46 @@ from plot.plot import Plot
 def train():
     # Limit the number of cores used by PyTorch to avoid using all the cores
     torch.set_num_threads(6)
-    logging.debug("Loading dataset")
-    dataset = SandiaDataset(
-        file="data/Sandia/time_series/SNL_18650_LFP_15C_0-100_0.5-1C_a_timeseries.csv",
-        train_cycles=1,
-        test_cycles=1,
-        physics_cycles=1,
+
+    # dataset_physics = SandiaDataset(
+    #     file="data/Sandia/time_series/SNL_18650_NCA_25C_0-100_0.5-1C_a_timeseries.csv",
+    #     train_cycles=10,
+    #     test_cycles=10,
+    #     physics_cycles=10,
+    #     nominal_capacity=3.25,
+    #     data_top_threshold=1,
+    #     data_bottom_threshold=0,
+    #     physics_top_threshold=1,
+    #     physics_bottom_threshold=0 
+    # )
+    dataset_train_physics = SandiaDataset(
+        file="data/Sandia/time_series/SNL_18650_LFP_25C_0-100_0.5-1C_a_timeseries.csv",
+        train_cycles=10,
+        test_cycles=0,
+        physics_cycles=10,
         nominal_capacity=1.1,
         data_top_threshold=1,
-        data_bottom_threshold=0.8,
+        data_bottom_threshold=0,
         physics_top_threshold=1,
-        physics_bottom_threshold=0.3
+        physics_bottom_threshold=0
     )
+    dataset_test = SandiaDataset(
+        file="data/Sandia/time_series/SNL_18650_LFP_25C_0-100_0.5-3C_a_timeseries.csv",
+        train_cycles=10,
+        test_cycles=1,
+        physics_cycles=0,
+        nominal_capacity=1.1,
+        data_top_threshold=1,
+        data_bottom_threshold=0,
+        physics_top_threshold=1,
+        physics_bottom_threshold=0 
+    )
+
     plot = Plot()
-    train_inputs, train_outputs = dataset.get_train_data()
-    test_inputs, test_outputs = dataset.get_test_data()
-    physics_inputs = dataset.get_physics_input()
-    physics_outputs = dataset.get_physics_output()
+    train_inputs, train_outputs = dataset_train_physics.get_train_data()
+    test_inputs, test_outputs = dataset_test.get_test_data()
+    physics_inputs = dataset_train_physics.get_physics_input()
+    physics_outputs = dataset_train_physics.get_physics_output()
     # Set the seed for reproducibility
     torch.manual_seed(0)
     # Create the model
@@ -55,7 +78,7 @@ def train():
     logging.debug("Starting training")
     # Set the patience to a huge value to avoid early stopping
     patience = 80000000
-    for epoch in range(150000):
+    for epoch in range(450000):
         # Reset the gradients
         optimizer.zero_grad()
         # Calculate the train loss
@@ -135,7 +158,7 @@ def train():
     torch.save(model.state_dict(), "pth_models/model_soc_pinn.pth")
 
 
-def setup_logging(level=logging.INFO):
+def setup_logging(level=logging.INFO, to_console=False):
     """
     Setup the logging environment
     """
@@ -151,9 +174,14 @@ def setup_logging(level=logging.INFO):
     file_handler.setFormatter(formatter)
     # Add the file handler to the logger
     logger.addHandler(file_handler)
+    # Add the console too for the logger
+    if to_console:
+        console_handler = logging.StreamHandler()
+        logger.addHandler(console_handler)
+
 
 
 if __name__ == "__main__":
     # Setup the logging environment withouth debug and info messages
-    setup_logging(level=logging.INFO)
+    setup_logging(level=logging.INFO, to_console=False)
     train()

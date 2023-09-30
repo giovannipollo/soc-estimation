@@ -53,9 +53,9 @@ class SandiaDataset:
         self.physics_top_threshold = physics_top_threshold
         self.physics_bottom_threshold = physics_bottom_threshold
         self.load_dataset(file=file)
-        self.clean_dataset()
         self.reset_time_to_zero_when_new_cycle_starts()
         self.compute_state_of_charge()
+        self.clean_dataset()
         self.extract_useful_data()
         self.split_and_prepare_dataset()
 
@@ -90,19 +90,12 @@ class SandiaDataset:
         """
         Clean the dataset, mainly removing the lines where the difference between the charge and discharge capacity is smaller than zero
         """
-
-        for line in self.data.iterrows():
-            if line[1]["Charge_Capacity (Ah)"] - line[1]["Discharge_Capacity (Ah)"] < 0:
-                logging.debug("Removing line %d" % line[0])
-                self.data.drop(line[0], inplace=True)
+        self.remove_data_below_threshold(data=self.data, top_threshold=1, bottom_threshold=0)
 
     def convert_capacity_to_soc(self):
         """
         Convert the capacity to SoC
         """
-        self.data["Capacity"] = (
-            self.data["Charge_Capacity (Ah)"] - self.data["Discharge_Capacity (Ah)"]
-        )
         self.data["Capacity"] = self.data["Capacity"] / self.nominal_capacity
 
     def compute_state_of_charge(self):
@@ -177,15 +170,16 @@ class SandiaDataset:
         ]
         self.physics_outputs = self.physics_data[["Capacity"]]
         # Save the train and test data
-        self.train_data.to_csv("data/temp_data/train_data.csv")
-        self.test_data.to_csv("data/temp_data/test_data.csv")
-        self.physics_data.to_csv("data/temp_data/physics_data.csv")
+        if self.train_cycles != 0:
+            self.train_data.to_csv("data/temp_data/train_data.csv")
+        if self.test_cycles != 0:
+            self.test_data.to_csv("data/temp_data/test_data.csv")
+        if self.physics_cycles != 0:
+            self.physics_data.to_csv("data/temp_data/physics_data.csv")
         # Convert the Test_Time (s) to hours
-        self.train_inputs["Test_Time (s)"] = self.train_inputs["Test_Time (s)"] / 3600
-        self.test_inputs["Test_Time (s)"] = self.test_inputs["Test_Time (s)"] / 3600
-        self.physics_inputs["Test_Time (s)"] = (
-            self.physics_inputs["Test_Time (s)"] / 3600
-        )
+        self.train_inputs.loc[:, "Test_Time (s)"] = self.train_inputs["Test_Time (s)"] / 3600
+        self.test_inputs.loc[:, "Test_Time (s)"] = self.test_inputs["Test_Time (s)"] / 3600
+        self.physics_inputs.loc[:, "Test_Time (s)"] = self.physics_inputs["Test_Time (s)"] / 3600
         # Convert the inputs and outputs to tensors
         self.train_inputs = torch.tensor(self.train_inputs.values, dtype=torch.float32)
         self.train_outputs = torch.tensor(
@@ -273,15 +267,13 @@ class SandiaDataset:
         """
         Reset the time to zero when a new cycle starts
         """
-        current_cycle_index = 1.0
-        initial_time = self.data.iloc[0]["Test_Time (s)"]
-        for line in self.data.iterrows():
-            if line[1]["Cycle_Index"] > current_cycle_index:
-                current_cycle_index = line[1]["Cycle_Index"]
-                initial_time = line[1]["Test_Time (s)"]
-                logging.debug("Resetting time to zero for line %d" % line[0])
-                self.data.at[line[0], "Test_Time (s)"] = 0
-            else:
-                self.data.at[line[0], "Test_Time (s)"] = (
-                    line[1]["Test_Time (s)"] - initial_time
-                )
+        # Find the indices where Cycle_Index changes
+        cycle_indices = np.where(self.data['Cycle_Index'].diff() > 0)[0]
+
+        for idx in cycle_indices:
+            initial_time = self.data.at[idx, 'Test_Time (s)']
+            self.data.loc[idx:, 'Test_Time (s)'] -= initial_time
+
+        # Reset the time for the first cycle
+        self.data.loc[self.data.index[0], 'Test_Time (s)'] = 0
+

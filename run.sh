@@ -7,6 +7,13 @@ if [ $# -eq 1 ]; then
     elif [ $1 -eq 1 ]; then
         python3 src/soc/train.py
     elif [ $1 -eq 2 ]; then
+        echo "Cleaning images in plots subdirectories..."
+        rm plots/physics/*.png
+        rm plots/test/*.png
+        rm plots/train/*.png
+        echo "Cleaning the log files..."
+        rm -rf log/*.log
+        echo "Starting the train..."
         python3 src/soc/train.py
     fi
 else

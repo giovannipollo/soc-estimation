@@ -200,7 +200,6 @@ class PINN_Model(nn.Module):
         # Compute the estimated SoC
         estimated_soc = self.forward(physics_input)
         estimated_soc = torch.flatten(estimated_soc)
-        logging.debug("Estimated soc: ", estimated_soc)
         # Compute the derivative of the SoC with respect to time_step
         d_soc_dt = torch.autograd.grad(
             estimated_soc,
@@ -209,7 +208,6 @@ class PINN_Model(nn.Module):
             create_graph=True,
         )[0]
         # Compute the equation loss
-        logging.debug("d_soc_dt: ", d_soc_dt)
         eq_loss_function = nn.MSELoss()
         eq_loss = eq_loss_function(d_soc_dt, current / capacity)
         return eq_loss
