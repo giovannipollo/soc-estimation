@@ -8,9 +8,9 @@ class SandiaDataset:
     def __init__(
         self,
         file,
-        train_cycles=1,
-        test_cycles=1,
-        physics_cycles=10,
+        train_cycles=0,
+        test_cycles=0,
+        physics_cycles=0,
         nominal_capacity=1.1,
         data_top_threshold=1,
         data_bottom_threshold=0,
@@ -28,21 +28,22 @@ class SandiaDataset:
             Number of cycles to use for training. The default is 0.
         test_cycles : int, optional
             Number of cycles to use for testing. The default is 0.
+        physics_cycles : int, optional
+            Number of cycles to use for physics. The default is 0.
         nominal_capacity : float, optional
             Nominal capacity of the battery. The default is 1.1.
-        threshold : float, optional
-            Threshold for the SoC. The default is 0. This means that the network is trained with data where the SoC is between 1 and 0. Allowed values are between 0 and 1.
+        data_top_threshold : float, optional
+            Top threshold for the data. The default is 1.
+        data_bottom_threshold : float, optional
+            Bottom threshold for the data. The default is 0.
+        physics_top_threshold : float, optional
+            Top threshold for the physics. The default is 1.
+        physics_bottom_threshold : float, optional
+            Bottom threshold for the physics. The default is 0.
 
         Returns
         -------
-        train_inputs : torch.tensor
-            Inputs for training.
-        train_outputs : torch.tensor
-            Outputs for training.
-        test_inputs : torch.tensor
-            Inputs for testing.
-        test_outputs : torch.tensor
-            Outputs for testing.
+        None.
         """
         self.train_cycles = train_cycles
         self.test_cycles = test_cycles
@@ -127,9 +128,10 @@ class SandiaDataset:
         """
         Split the dataset into train and test by using the specified number of cycles taken randomly from the dataset
         """
+
         # Get the number of cycles
-        # Save the data to a csv file
         cycles = self.data["Cycle_Index"].unique()
+        
         # Shuffle the cycles
         # np.random.shuffle(cycles)
         # Get the train and test cycles
@@ -141,10 +143,12 @@ class SandiaDataset:
             + self.test_cycles
             + self.physics_cycles
         ]
-        # Get the train and test data
+        
+        # Get the train, test and physics data by filtering the data by cycle
         self.train_data = self.data[self.data["Cycle_Index"].isin(train_cycles)]
         self.test_data = self.data[self.data["Cycle_Index"].isin(test_cycles)]
         self.physics_data = self.data[self.data["Cycle_Index"].isin(physics_cycles)]
+
         # Remove the data below the threshold
         self.train_data = self.remove_data_below_threshold(
             data=self.train_data,
@@ -156,6 +160,7 @@ class SandiaDataset:
             top_threshold=self.physics_top_threshold,
             bottom_threshold=self.physics_bottom_threshold
         )
+
         # Extract the inputs and outputs
         self.train_inputs = self.train_data[
             ["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]
@@ -169,6 +174,7 @@ class SandiaDataset:
             ["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]
         ]
         self.physics_outputs = self.physics_data[["Capacity"]]
+
         # Save the train and test data
         if self.train_cycles != 0:
             self.train_data.to_csv("data/temp_data/train_data.csv")
@@ -176,10 +182,12 @@ class SandiaDataset:
             self.test_data.to_csv("data/temp_data/test_data.csv")
         if self.physics_cycles != 0:
             self.physics_data.to_csv("data/temp_data/physics_data.csv")
+
         # Convert the Test_Time (s) to hours
         self.train_inputs.loc[:, "Test_Time (s)"] = self.train_inputs["Test_Time (s)"] / 3600
         self.test_inputs.loc[:, "Test_Time (s)"] = self.test_inputs["Test_Time (s)"] / 3600
         self.physics_inputs.loc[:, "Test_Time (s)"] = self.physics_inputs["Test_Time (s)"] / 3600
+
         # Convert the inputs and outputs to tensors
         self.train_inputs = torch.tensor(self.train_inputs.values, dtype=torch.float32)
         self.train_outputs = torch.tensor(
