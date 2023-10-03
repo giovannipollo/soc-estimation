@@ -16,6 +16,7 @@ class SandiaDataset:
         data_bottom_threshold=0,
         physics_top_threshold=1,
         physics_bottom_threshold=0,
+        generate_random_data=False,
     ):
         """
         Constructor of the dataset.
@@ -58,7 +59,12 @@ class SandiaDataset:
         self.compute_state_of_charge()
         self.clean_dataset()
         self.extract_useful_data()
-        self.split_and_prepare_dataset()
+        if generate_random_data:
+            self.generate_random_data(
+                discharge=True, discharge_c=3, charge_c=0.5, num_points=100, temperature=25
+            )
+        else:
+            self.split_and_prepare_dataset()
 
     def load_dataset(self, file):
         """
@@ -91,7 +97,9 @@ class SandiaDataset:
         """
         Clean the dataset, mainly removing the lines where the difference between the charge and discharge capacity is smaller than zero
         """
-        self.remove_data_below_threshold(data=self.data, top_threshold=1, bottom_threshold=0)
+        self.remove_data_below_threshold(
+            data=self.data, top_threshold=1, bottom_threshold=0
+        )
 
     def convert_capacity_to_soc(self):
         """
@@ -131,7 +139,7 @@ class SandiaDataset:
 
         # Get the number of cycles
         cycles = self.data["Cycle_Index"].unique()
-        
+
         # Shuffle the cycles
         # np.random.shuffle(cycles)
         # Get the train and test cycles
@@ -143,7 +151,7 @@ class SandiaDataset:
             + self.test_cycles
             + self.physics_cycles
         ]
-        
+
         # Get the train, test and physics data by filtering the data by cycle
         self.train_data = self.data[self.data["Cycle_Index"].isin(train_cycles)]
         self.test_data = self.data[self.data["Cycle_Index"].isin(test_cycles)]
@@ -158,7 +166,7 @@ class SandiaDataset:
         self.physics_data = self.remove_data_below_threshold(
             data=self.physics_data,
             top_threshold=self.physics_top_threshold,
-            bottom_threshold=self.physics_bottom_threshold
+            bottom_threshold=self.physics_bottom_threshold,
         )
 
         # Extract the inputs and outputs
@@ -184,9 +192,15 @@ class SandiaDataset:
             self.physics_data.to_csv("data/temp_data/physics_data.csv")
 
         # Convert the Test_Time (s) to hours
-        self.train_inputs.loc[:, "Test_Time (s)"] = self.train_inputs["Test_Time (s)"] / 3600
-        self.test_inputs.loc[:, "Test_Time (s)"] = self.test_inputs["Test_Time (s)"] / 3600
-        self.physics_inputs.loc[:, "Test_Time (s)"] = self.physics_inputs["Test_Time (s)"] / 3600
+        self.train_inputs.loc[:, "Test_Time (s)"] = (
+            self.train_inputs["Test_Time (s)"] / 3600
+        )
+        self.test_inputs.loc[:, "Test_Time (s)"] = (
+            self.test_inputs["Test_Time (s)"] / 3600
+        )
+        self.physics_inputs.loc[:, "Test_Time (s)"] = (
+            self.physics_inputs["Test_Time (s)"] / 3600
+        )
 
         # Convert the inputs and outputs to tensors
         self.train_inputs = torch.tensor(self.train_inputs.values, dtype=torch.float32)
@@ -276,12 +290,51 @@ class SandiaDataset:
         Reset the time to zero when a new cycle starts
         """
         # Find the indices where Cycle_Index changes
-        cycle_indices = np.where(self.data['Cycle_Index'].diff() > 0)[0]
+        cycle_indices = np.where(self.data["Cycle_Index"].diff() > 0)[0]
 
         for idx in cycle_indices:
-            initial_time = self.data.at[idx, 'Test_Time (s)']
-            self.data.loc[idx:, 'Test_Time (s)'] -= initial_time
+            initial_time = self.data.at[idx, "Test_Time (s)"]
+            self.data.loc[idx:, "Test_Time (s)"] -= initial_time
 
         # Reset the time for the first cycle
-        self.data.loc[self.data.index[0], 'Test_Time (s)'] = 0
+        self.data.loc[self.data.index[0], "Test_Time (s)"] = 0
 
+    def generate_random_data(
+        self,
+        charge=False,
+        discharge=False,
+        charge_c=1,
+        discharge_c=1,
+        num_points=100,
+        temperature=25,
+    ):
+        min_voltage = self.data["Voltage (V)"].min()
+        max_voltage = self.data["Voltage (V)"].max()
+        charge_time = 1 / charge_c
+        discharge_time = 1 / discharge_c
+        charge_current = self.nominal_capacity * charge_c
+        discharge_current = self.nominal_capacity * discharge_c * -1
+        self.physics_data = pd.DataFrame()
+        if charge:
+            self.physics_data["Test_Time (s)"] = np.linspace(0, charge_time, num_points)
+            self.physics_data["Voltage (V)"] = np.linspace(
+                min_voltage, max_voltage, num_points
+            )
+            self.physics_data["Current (A)"] = np.ones(num_points) * charge_current
+        else:
+            self.physics_data["Test_Time (s)"] = np.linspace(
+                charge_time, charge_time + discharge_time, num_points
+            )
+            self.physics_data["Voltage (V)"] = np.linspace(
+                min_voltage, max_voltage, num_points
+            )
+            self.physics_data["Current (A)"] = np.ones(num_points) * -discharge_current
+
+        self.physics_data["Cell_Temperature (C)"] = np.ones(num_points) * temperature
+        self.physics_data.to_csv("data/temp_data/physics_data.csv")
+        self.physics_inputs = self.physics_data[
+            ["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]
+        ]
+        self.physics_inputs = torch.tensor(
+            self.physics_inputs.values, dtype=torch.float32
+        )

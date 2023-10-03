@@ -21,22 +21,22 @@ def train():
     # Limit the number of cores used by PyTorch to avoid using all the cores
     torch.set_num_threads(6)
 
-    # dataset_physics = SandiaDataset(
-    #     file="data/Sandia/time_series/SNL_18650_NCA_25C_0-100_0.5-1C_a_timeseries.csv",
-    #     train_cycles=10,
-    #     test_cycles=10,
-    #     physics_cycles=10,
-    #     nominal_capacity=3.25,
-    #     data_top_threshold=1,
-    #     data_bottom_threshold=0,
-    #     physics_top_threshold=1,
-    #     physics_bottom_threshold=0 
-    # )
-    dataset_train_physics = SandiaDataset(
-        file="data/Sandia/time_series/SNL_18650_LFP_25C_0-100_0.5-1C_a_timeseries.csv",
+    dataset_physics = SandiaDataset(
+        file="data/Sandia/time_series/SNL_18650_NCA_25C_0-100_0.5-1C_a_timeseries.csv",
         train_cycles=10,
-        test_cycles=0,
+        test_cycles=10,
         physics_cycles=10,
+        nominal_capacity=3.25,
+        data_top_threshold=1,
+        data_bottom_threshold=0,
+        physics_top_threshold=1,
+        physics_bottom_threshold=0,
+    )
+    dataset_train = SandiaDataset(
+        file="data/Sandia/time_series/SNL_18650_LFP_25C_0-100_0.5-1C_a_timeseries.csv",
+        train_cycles=3,
+        test_cycles=0,
+        physics_cycles=0,
         nominal_capacity=1.1,
         data_top_threshold=1,
         data_bottom_threshold=0,
@@ -44,11 +44,11 @@ def train():
         physics_bottom_threshold=0
     )
     dataset_test = SandiaDataset(
-        file="data/Sandia/time_series/SNL_18650_LFP_25C_0-100_0.5-3C_a_timeseries.csv",
+        file="data/Sandia/time_series/SNL_18650_NCA_25C_0-100_0.5-1C_a_timeseries.csv",
         train_cycles=10,
         test_cycles=1,
         physics_cycles=0,
-        nominal_capacity=1.1,
+        nominal_capacity=3.25,
         data_top_threshold=1,
         data_bottom_threshold=0,
         physics_top_threshold=1,
@@ -56,10 +56,10 @@ def train():
     )
 
     plot = Plot()
-    train_inputs, train_outputs = dataset_train_physics.get_train_data()
+    train_inputs, train_outputs = dataset_train.get_train_data()
     test_inputs, test_outputs = dataset_test.get_test_data()
-    physics_inputs = dataset_train_physics.get_physics_input()
-    physics_outputs = dataset_train_physics.get_physics_output()
+    physics_inputs = dataset_physics.get_physics_input()
+    physics_outputs = dataset_physics.get_physics_output()
     # Set the seed for reproducibility
     torch.manual_seed(0)
     # Create the model
@@ -78,20 +78,20 @@ def train():
     logging.debug("Starting training")
     # Set the patience to a huge value to avoid early stopping
     patience = 80000000
-    for epoch in range(450000):
+    for epoch in range(1500000):
         # Reset the gradients
         optimizer.zero_grad()
         # Calculate the train loss
         train_loss = model.loss(
             x=train_inputs,
             y=train_outputs,
-            physics_informed=True,
+            physics_informed=False,
             physics_x=physics_inputs,
             capacity=1.1,
         )
         # Calculate the validation loss
         validation_loss = model.validation_loss(x=test_inputs, y=test_outputs).item()
-        if epoch % 500 == 0:
+        if epoch % 2000 == 0:
             plot.plot_epoch_predictions_train(
                 epoch=epoch,
                 model=model,
