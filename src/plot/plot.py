@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from PIL import Image
+import torch
 
 
 class Plot:
@@ -52,7 +53,7 @@ class Plot:
             model.forward(test_inputs).detach().numpy(),
             label="Predicted SoC",
         )
-        plt.xlabel("Time (s)")
+        plt.xlabel("Time (h)")
         plt.ylabel("SoC")
         plt.legend()
         filename = "plots/test/epoch_%d_test.png" % epoch
@@ -98,7 +99,7 @@ class Plot:
             label="Predicted SoC",
             s=1,
         )
-        plt.xlabel("Time (s)")
+        plt.xlabel("Time (h)")
         plt.ylabel("SoC")
         plt.legend()
         filename = "plots/train/epoch_%d_train.png" % epoch
@@ -144,12 +145,72 @@ class Plot:
             s=1,
         )
         plt.scatter
-        plt.xlabel("Time (s)")
+        plt.xlabel("Time (h)")
         plt.ylabel("SoC")
         plt.legend()
         filename = "plots/physics/epoch_%d_physics.png" % epoch
         plt.savefig(filename)
         self.plot_epoch_prediction_physic_plots.append(filename)
+        plt.close()
+
+    def plot_epoch_dsoc_dt(self, epoch, model, physics_inputs, physics_outputs, capacity):
+        """
+        Plot the derivative of the SoC with respect to time_step
+
+        Parameters
+        ----------
+        epoch : int
+            Current epoch.
+        model : PINN_Model
+            Model to use for the prediction.
+        physics_inputs : torch.tensor
+            Inputs of the physics data.
+
+        Returns
+        -------
+        None.
+        """
+        time_step = physics_inputs[:, 0].clone().detach().requires_grad_(True)
+        voltage = physics_inputs[:, 1].clone().detach().requires_grad_(True)
+        current = physics_inputs[:, 2].clone().detach().requires_grad_(True)
+        temperature = physics_inputs[:, 3].clone().detach().requires_grad_(True)
+        nominal_capacity = physics_inputs[:, 4].clone().detach().requires_grad_(True)
+        c_rate = physics_inputs[:, 5].clone().detach().requires_grad_(True)
+        physics_output = physics_outputs.clone().detach().requires_grad_(True)
+        
+        # Define the physics inputs
+        physics_input = torch.stack((time_step, voltage, current, temperature, nominal_capacity, c_rate), dim=1)
+        
+        # Compute the estimated SoC
+        estimated_soc = model.forward(physics_input)
+        estimated_soc = torch.flatten(estimated_soc)
+        physics_output = torch.flatten(physics_output)
+        dsoc_dt = torch.autograd.grad(
+            estimated_soc,
+            time_step,
+            grad_outputs=torch.ones_like(time_step),
+            create_graph=True,
+        )[0]
+        # Plot the derivative of the SoC with respect to time_step
+        plt.figure()
+        plt.scatter(
+            physics_input[:, 0].detach().numpy(),
+            dsoc_dt.detach().numpy(),
+            label="Predicted dSoC/dt",
+            s=1
+        )
+        # Plot the true derivative of the SoC with respect to time_step
+        plt.scatter(
+            physics_input[:, 0].detach().numpy(),
+            current.detach().numpy() / capacity,
+            label="True dSoC/dt",
+            s=1
+        )
+        plt.xlabel("Time (h)")
+        plt.ylabel("dSoC/dt")
+        plt.legend()
+        filename = "plots/d_soc_dt/epoch_%d_d_soc_dt.png" % epoch
+        plt.savefig(filename)
         plt.close()
 
     def save_gif_PIL(self, outfile, files, fps=5, loop=0):

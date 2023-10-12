@@ -26,15 +26,26 @@ def train():
         train_cycles=10,
         test_cycles=10,
         physics_cycles=10,
-        nominal_capacity=3.25,
+        nominal_capacity=3.3,
         data_top_threshold=1,
         data_bottom_threshold=0,
         physics_top_threshold=1,
         physics_bottom_threshold=0,
+    ) 
+    dataset_test = SandiaDataset(
+        file="data/Sandia/time_series/SNL_18650_NCA_25C_0-100_0.5-1C_a_timeseries.csv",
+        train_cycles=10,
+        test_cycles=1,
+        physics_cycles=0,
+        nominal_capacity=3.3,
+        data_top_threshold=1,
+        data_bottom_threshold=0,
+        physics_top_threshold=1,
+        physics_bottom_threshold=0 
     )
     dataset_train = SandiaDataset(
         file="data/Sandia/time_series/SNL_18650_LFP_25C_0-100_0.5-1C_a_timeseries.csv",
-        train_cycles=3,
+        train_cycles=10,
         test_cycles=0,
         physics_cycles=0,
         nominal_capacity=1.1,
@@ -42,17 +53,6 @@ def train():
         data_bottom_threshold=0,
         physics_top_threshold=1,
         physics_bottom_threshold=0
-    )
-    dataset_test = SandiaDataset(
-        file="data/Sandia/time_series/SNL_18650_NCA_25C_0-100_0.5-1C_a_timeseries.csv",
-        train_cycles=10,
-        test_cycles=1,
-        physics_cycles=0,
-        nominal_capacity=3.25,
-        data_top_threshold=1,
-        data_bottom_threshold=0,
-        physics_top_threshold=1,
-        physics_bottom_threshold=0 
     )
 
     plot = Plot()
@@ -78,16 +78,15 @@ def train():
     logging.debug("Starting training")
     # Set the patience to a huge value to avoid early stopping
     patience = 80000000
-    for epoch in range(1500000):
+    for epoch in range(4500000):
         # Reset the gradients
         optimizer.zero_grad()
         # Calculate the train loss
         train_loss = model.loss(
             x=train_inputs,
             y=train_outputs,
-            physics_informed=False,
+            physics_informed=True,
             physics_x=physics_inputs,
-            capacity=1.1,
         )
         # Calculate the validation loss
         validation_loss = model.validation_loss(x=test_inputs, y=test_outputs).item()
@@ -111,24 +110,33 @@ def train():
                 physics_inputs=physics_inputs,
                 physics_outputs=physics_outputs,
             )
+            plot.plot_epoch_dsoc_dt(
+                epoch=epoch,
+                model=model,
+                physics_inputs=physics_inputs,
+                physics_outputs=physics_outputs,
+                capacity=3.3,
+            )
             logging.info(
                 "Epoch: %d, Validation loss: %f, Best Validation loss: %f"
                 % (epoch, validation_loss, best_validation_loss)
             )
             # Update the learning rate scheduler based on the validation loss
-            # scheduler.step(validation_loss)
-            # Check if validation loss is increasing
-            if validation_loss < best_validation_loss:
-                best_validation_loss = validation_loss
-                logging.debug("Best validation loss: %f" % best_validation_loss)
-            else:
-                # If validation loss increases for 'patience' epochs, stop training
-                if epoch > patience and validation_loss >= best_validation_loss:
-                    logging.info("Best validation loss: %f" % best_validation_loss)
-                    logging.info("Early stopping at epoch %d" % epoch)
-                    break
+
         # Log the loss
         logging.info("Train loss: %f" % train_loss.item())
+        logging.info("Validation loss: %f" % validation_loss)
+        # scheduler.step(validation_loss)
+        # Check if validation loss is increasing
+        if validation_loss < best_validation_loss:
+            best_validation_loss = validation_loss
+            logging.debug("Best validation loss updated: %f" % best_validation_loss)
+        else:
+            # If validation loss increases for 'patience' epochs, stop training
+            if epoch > patience and validation_loss >= best_validation_loss:
+                logging.info("Best validation loss: %f" % best_validation_loss)
+                logging.info("Early stopping at epoch %d" % epoch)
+                break
         if train_loss.item() < best_train_loss:
             best_train_loss = train_loss.item()
             logging.debug("Best train loss: %f" % best_train_loss)

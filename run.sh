@@ -11,6 +11,7 @@ if [ $# -eq 1 ]; then
         rm plots/physics/*.png
         rm plots/test/*.png
         rm plots/train/*.png
+        rm plots/d_soc_dt/*.png
         echo "Cleaning the log files..."
         rm -rf log/*.log
         echo "Starting the train..."

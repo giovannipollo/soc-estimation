@@ -173,14 +173,32 @@ class SandiaDataset:
         self.train_inputs = self.train_data[
             ["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]
         ]
+        # Add the array of the nominal capacity
+        self.train_inputs["Nominal_Capacity"] = np.ones(
+            self.train_inputs.shape[0]
+        ) * self.nominal_capacity
+        # Add the C rate
+        self.train_inputs["C_Rate"] = self.train_inputs["Current (A)"] / self.nominal_capacity
         self.train_outputs = self.train_data[["Capacity"]]
         self.test_inputs = self.test_data[
             ["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]
         ]
+        # Add the array of the nominal capacity
+        self.test_inputs["Nominal_Capacity"] = np.ones(
+            self.test_inputs.shape[0]
+        ) * self.nominal_capacity
+        # Add the C rate
+        self.test_inputs["C_Rate"] = self.test_inputs["Current (A)"] / self.nominal_capacity
         self.test_outputs = self.test_data[["Capacity"]]
         self.physics_inputs = self.physics_data[
             ["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]
         ]
+        # Add the array of the nominal capacity
+        self.physics_inputs["Nominal_Capacity"] = np.ones(
+            self.physics_inputs.shape[0]
+        ) * self.nominal_capacity
+        # Add the C rate
+        self.physics_inputs["C_Rate"] = self.physics_inputs["Current (A)"] / self.nominal_capacity
         self.physics_outputs = self.physics_data[["Capacity"]]
 
         # Save the train and test data
