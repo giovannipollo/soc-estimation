@@ -70,14 +70,14 @@ def train():
     # Create the optimizer
     optimizer = optim.Adam(model.parameters(), lr=initial_lr)
     # Create a learning rate scheduler
-    # scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=500, min_lr=1e-6)
+    scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=500, min_lr=1e-6)
     # Initialize other training parameters
     best_train_loss = float("inf")
     best_validation_loss = float("inf")
     # Number of epochs to wait before stopping if validation loss increases
     logging.debug("Starting training")
     # Set the patience to a huge value to avoid early stopping
-    patience = 80000000
+    patience = 100000
     for epoch in range(1500000):
         # Reset the gradients
         optimizer.zero_grad()
@@ -126,7 +126,7 @@ def train():
         # Log the loss
         logging.info("Train loss: %f" % train_loss.item())
         logging.info("Validation loss: %f" % validation_loss)
-        # scheduler.step(validation_loss)
+        scheduler.step(validation_loss)
         # Check if validation loss is increasing
         if validation_loss < best_validation_loss:
             best_validation_loss = validation_loss
