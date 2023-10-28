@@ -22,26 +22,15 @@ def train():
     torch.set_num_threads(6)
 
     dataset_physics = SandiaDataset(
-        file="data/Sandia/time_series/SNL_18650_NCA_25C_0-100_0.5-1C_a_timeseries.csv",
+        file="data/Sandia/time_series/SNL_18650_LFP_25C_0-100_0.5-3C_a_timeseries.csv",
         train_cycles=10,
         test_cycles=10,
         physics_cycles=10,
-        nominal_capacity=3.3,
+        nominal_capacity=1.1,
         data_top_threshold=1,
         data_bottom_threshold=0,
         physics_top_threshold=1,
         physics_bottom_threshold=0,
-    ) 
-    dataset_test = SandiaDataset(
-        file="data/Sandia/time_series/SNL_18650_NCA_25C_0-100_0.5-1C_a_timeseries.csv",
-        train_cycles=10,
-        test_cycles=1,
-        physics_cycles=0,
-        nominal_capacity=3.3,
-        data_top_threshold=1,
-        data_bottom_threshold=0,
-        physics_top_threshold=1,
-        physics_bottom_threshold=0 
     )
     dataset_train = SandiaDataset(
         file="data/Sandia/time_series/SNL_18650_LFP_25C_0-100_0.5-1C_a_timeseries.csv",
@@ -53,6 +42,17 @@ def train():
         data_bottom_threshold=0,
         physics_top_threshold=1,
         physics_bottom_threshold=0
+    )
+    dataset_test = SandiaDataset(
+        file="data/Sandia/time_series/SNL_18650_LFP_25C_0-100_0.5-3C_a_timeseries.csv",
+        train_cycles=10,
+        test_cycles=1,
+        physics_cycles=0,
+        nominal_capacity=1.1,
+        data_top_threshold=1,
+        data_bottom_threshold=0,
+        physics_top_threshold=1,
+        physics_bottom_threshold=0 
     )
 
     plot = Plot()
@@ -78,7 +78,7 @@ def train():
     logging.debug("Starting training")
     # Set the patience to a huge value to avoid early stopping
     patience = 80000000
-    for epoch in range(4500000):
+    for epoch in range(1500000):
         # Reset the gradients
         optimizer.zero_grad()
         # Calculate the train loss
@@ -115,7 +115,7 @@ def train():
                 model=model,
                 physics_inputs=physics_inputs,
                 physics_outputs=physics_outputs,
-                capacity=3.3,
+                capacity=1.1,
             )
             logging.info(
                 "Epoch: %d, Validation loss: %f, Best Validation loss: %f"

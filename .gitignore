@@ -166,3 +166,4 @@ plots/
 .idea/
 pth_models/
 *.pth
+*.png

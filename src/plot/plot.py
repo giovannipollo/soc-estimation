@@ -59,6 +59,8 @@ class Plot:
         filename = "plots/test/epoch_%d_test.png" % epoch
         plt.savefig(filename)
         self.plot_epoch_prediction_test_plots.append(filename)
+        filename_constant = "epoch_test.png"
+        plt.savefig(filename_constant)
         plt.close()
 
     def plot_epoch_predictions_train(self, epoch, model, train_inputs, train_outputs):
@@ -105,6 +107,8 @@ class Plot:
         filename = "plots/train/epoch_%d_train.png" % epoch
         plt.savefig(filename)
         self.plot_epoch_predictions_train_plots.append(filename)
+        filename_constant = "epoch_train.png"
+        plt.savefig(filename_constant)
         plt.close()
 
     def plot_epoch_prediction_physic(
@@ -151,6 +155,8 @@ class Plot:
         filename = "plots/physics/epoch_%d_physics.png" % epoch
         plt.savefig(filename)
         self.plot_epoch_prediction_physic_plots.append(filename)
+        filename_constant = "epoch_physics.png"
+        plt.savefig(filename_constant)
         plt.close()
 
     def plot_epoch_dsoc_dt(self, epoch, model, physics_inputs, physics_outputs, capacity):
@@ -175,11 +181,11 @@ class Plot:
         current = physics_inputs[:, 2].clone().detach().requires_grad_(True)
         temperature = physics_inputs[:, 3].clone().detach().requires_grad_(True)
         nominal_capacity = physics_inputs[:, 4].clone().detach().requires_grad_(True)
-        c_rate = physics_inputs[:, 5].clone().detach().requires_grad_(True)
+        # c_rate = physics_inputs[:, 5].clone().detach().requires_grad_(True)
         physics_output = physics_outputs.clone().detach().requires_grad_(True)
         
         # Define the physics inputs
-        physics_input = torch.stack((time_step, voltage, current, temperature, nominal_capacity, c_rate), dim=1)
+        physics_input = torch.stack((time_step, voltage, current, temperature, nominal_capacity), dim=1)
         
         # Compute the estimated SoC
         estimated_soc = model.forward(physics_input)
@@ -211,6 +217,8 @@ class Plot:
         plt.legend()
         filename = "plots/d_soc_dt/epoch_%d_d_soc_dt.png" % epoch
         plt.savefig(filename)
+        filename_constant = "epoch_d_soc_dt.png"
+        plt.savefig(filename_constant)
         plt.close()
 
     def save_gif_PIL(self, outfile, files, fps=5, loop=0):

@@ -19,13 +19,12 @@ class PINN_Model(nn.Module):
         - Current: Current of the battery
         - Temperature: Temperature of the battery
         - Nominal capacity: Nominal capacity of the battery
-        - C Rate: C Rate of the battery
 
     The output is:
         - State of Charge (SoC): The SoC is a value between 0 and 1 that indicates the current capacity of the battery.
     """
 
-    def __init__(self, input_size=6, output_size=1, hidden_size=16):
+    def __init__(self, input_size=5, output_size=1, hidden_size=16):
         """
         Constructor of the model
 
@@ -109,7 +108,7 @@ class PINN_Model(nn.Module):
 
         # Weights for each contribution of the loss
         data_weight = 1
-        physics_weight = 0.01
+        physics_weight = 0.0001
         
         # Log the losses
         logging.info("Data loss: " + str(data_loss))
@@ -210,10 +209,10 @@ class PINN_Model(nn.Module):
         current = x[:, 2].clone().detach().requires_grad_(True)
         temperature = x[:, 3].clone().detach().requires_grad_(True)
         nominal_capacity = x[:, 4].clone().detach().requires_grad_(True)
-        c_rate = x[:, 5].clone().detach().requires_grad_(True)
+        # c_rate = x[:, 5].clone().detach().requires_grad_(True)
 
         # Define the physics inputs
-        physics_input = torch.stack((time_step, voltage, current, temperature, nominal_capacity, c_rate), dim=1)
+        physics_input = torch.stack((time_step, voltage, current, temperature, nominal_capacity), dim=1)
 
         # Compute the estimated SoC
         estimated_soc = self.forward(physics_input)
