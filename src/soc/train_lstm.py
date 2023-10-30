@@ -3,91 +3,74 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import pandas as pd
 import torch
-from model import PINN_Model
-from soc.model import PINN_Model
+from lstm_model import LSTM_Model
 import scipy.io as sio
 import logging
 import sys
 import os
 import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
 
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
-from dataset.sandia import SandiaDataset
+from dataset.new_sandia import NewSandiaDataset
 from plot.plot import Plot
 
 
 def train():
     # Limit the number of cores used by PyTorch to avoid using all the cores
     torch.set_num_threads(6)
-
-    dataset_physics = SandiaDataset(
-        file="data/Sandia/time_series/SNL_18650_LFP_25C_0-100_0.5-3C_a_timeseries.csv",
-        train_cycles=10,
-        test_cycles=10,
-        physics_cycles=10,
+    data = NewSandiaDataset(
+        directory="data/Sandia/time_series",
+        cell_type="LFP",
         nominal_capacity=1.1,
-        data_top_threshold=1,
-        data_bottom_threshold=0,
-        physics_top_threshold=1,
-        physics_bottom_threshold=0,
-    )
-    dataset_train = SandiaDataset(
-        file="data/Sandia/time_series/SNL_18650_LFP_25C_0-100_0.5-1C_a_timeseries.csv",
-        train_cycles=10,
-        test_cycles=0,
-        physics_cycles=0,
-        nominal_capacity=1.1,
-        data_top_threshold=1,
-        data_bottom_threshold=0,
-        physics_top_threshold=1,
-        physics_bottom_threshold=0,
-    )
-    dataset_test = SandiaDataset(
-        file="data/Sandia/time_series/SNL_18650_LFP_25C_0-100_0.5-3C_a_timeseries.csv",
-        train_cycles=10,
-        test_cycles=1,
-        physics_cycles=0,
-        nominal_capacity=1.1,
-        data_top_threshold=1,
-        data_bottom_threshold=0,
-        physics_top_threshold=1,
-        physics_bottom_threshold=0,
+        cache=True
     )
 
     plot = Plot()
-    train_inputs, train_outputs = dataset_train.get_train_data()
-    test_inputs, test_outputs = dataset_test.get_test_data()
-    physics_inputs = dataset_physics.get_physics_input()
-    physics_outputs = dataset_physics.get_physics_output()
+    train_data, physics_data, test_data = data.split_data(
+        first_part_percentage=0.8,
+        second_part_percentage=0.1,
+        third_part_percentage=0.1,
+    )
+
+    print("arrivato")
+    train_dataloader = DataLoader(train_data, batch_size=1, shuffle=False)
+    physics_dataloader = DataLoader(physics_data, batch_size=1, shuffle=False)
+    test_dataloader = DataLoader(test_data, batch_size=1, shuffle=False)
+    for i, (inputs, outputs) in enumerate(train_dataloader):
+        print(inputs)
+        print(outputs)
+        if i == 10:
+            break
+
+    print("arrivato")
+
+    # Create the model
+    model = LSTM_Model(input_size=4, output_size=1, hidden_size=16)
+
     # Set the seed for reproducibility
     torch.manual_seed(0)
-    # Create the model
-    logging.debug("Creating model")
-    model = PINN_Model(hidden_size=20)
-    # Define the initial learning rate
-    initial_lr = 0.001
+
     # Create the optimizer
-    optimizer = optim.Adam(model.parameters(), lr=initial_lr)
-    # Create a learning rate scheduler
-    scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=1000, min_lr=1e-6)
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    # Create the scheduler
+    scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=10, verbose=True)
+
     # Initialize other training parameters
     best_train_loss = float("inf")
     best_validation_loss = float("inf")
-    # Number of epochs to wait before stopping if validation loss increases
-    logging.debug("Starting training")
-    # Set the patience to a huge value to avoid early stopping
-    patience = 1500000
-    for epoch in range(1500000):
+
+    for epoch in range(150000):
         # Reset the gradients
         optimizer.zero_grad()
+        # Forward pass
+        pred_outputs = model(train_inputs)
         # Calculate the train loss
         train_loss = model.loss(
-            x=train_inputs,
-            y=train_outputs,
-            physics_informed=True,
-            physics_x=physics_inputs,
-            nominal_capacity=1.1,
+            y_pred=pred_outputs,
+            y_true=train_outputs,
         )
         # Calculate the validation loss
         validation_loss = model.validation_loss(x=test_inputs, y=test_outputs).item()

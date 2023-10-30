@@ -16,7 +16,18 @@ if [ $# -eq 1 ]; then
         rm -rf log/*.log
         echo "Starting the train..."
         python3 src/soc/train.py
+    elif [ $1 -eq 3 ]; then
+        echo "Cleaning images in plots subdirectories..."
+        rm plots/physics/*.png
+        rm plots/test/*.png
+        rm plots/train/*.png
+        rm plots/d_soc_dt/*.png
+        echo "Cleaning the log files..."
+        rm -rf log/*.log
+        echo "Starting the train..."
+        python3 src/soc/train_lstm.py
     fi
+
 else
     echo "Usage: ./run.sh <number>"
 fi

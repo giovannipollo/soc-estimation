@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from PIL import Image
 import torch
+import numpy as np
 
 
 class Plot:
@@ -44,12 +45,12 @@ class Plot:
         # Place the epoch number on the plot
         plt.text(0.3, 1.1, "Epoch: %d, MSELoss: %f" % (epoch, validation_loss), transform=plt.gca().transAxes)
         plt.scatter(
-            test_inputs[:, 0].detach().numpy(),
+            self.make_time_absolute(test_inputs)[:, 0].detach().numpy(),
             test_outputs.detach().numpy(),
             label="True SoC",
         )
         plt.scatter(
-            test_inputs[:, 0].detach().numpy(),
+            self.make_time_absolute(test_inputs)[:, 0].detach().numpy(),
             model.forward(test_inputs).detach().numpy(),
             label="Predicted SoC",
         )
@@ -90,13 +91,13 @@ class Plot:
         plt.text(0.5, 1.1, "Epoch: %d" % epoch, transform=plt.gca().transAxes)
         # Plot the points without the line
         plt.scatter(
-            train_inputs[:, 0].detach().numpy(),
+            self.make_time_absolute(train_inputs)[:, 0].detach().numpy(),
             train_outputs.detach().numpy(),
             label="True SoC",
             s=1,
         )
         plt.scatter(
-            train_inputs[:, 0].detach().numpy(),
+            self.make_time_absolute(train_inputs)[:, 0].detach().numpy(),
             model.forward(train_inputs).detach().numpy(),
             label="Predicted SoC",
             s=1,
@@ -137,13 +138,13 @@ class Plot:
         # Place the epoch number on the plot
         plt.text(0.5, 1.1, "Epoch: %d" % epoch, transform=plt.gca().transAxes)
         plt.scatter(
-            physics_inputs[:, 0].detach().numpy(),
+            self.make_time_absolute(physics_inputs)[:, 0].detach().numpy(),
             model.forward(physics_inputs).detach().numpy(),
             label="Predicted SoC Physics",
             s=1,
         )
         plt.scatter(
-            physics_inputs[:, 0].detach().numpy(),
+            self.make_time_absolute(physics_inputs)[:, 0].detach().numpy(),
             physics_outputs.detach().numpy(),
             label="True SoC Physics",
             s=1,
@@ -180,12 +181,11 @@ class Plot:
         voltage = physics_inputs[:, 1].clone().detach().requires_grad_(True)
         current = physics_inputs[:, 2].clone().detach().requires_grad_(True)
         temperature = physics_inputs[:, 3].clone().detach().requires_grad_(True)
-        nominal_capacity = physics_inputs[:, 4].clone().detach().requires_grad_(True)
-        # c_rate = physics_inputs[:, 5].clone().detach().requires_grad_(True)
+        
         physics_output = physics_outputs.clone().detach().requires_grad_(True)
         
         # Define the physics inputs
-        physics_input = torch.stack((time_step, voltage, current, temperature, nominal_capacity), dim=1)
+        physics_input = torch.stack((time_step, voltage, current, temperature), dim=1)
         
         # Compute the estimated SoC
         estimated_soc = model.forward(physics_input)
@@ -200,14 +200,14 @@ class Plot:
         # Plot the derivative of the SoC with respect to time_step
         plt.figure()
         plt.scatter(
-            physics_input[:, 0].detach().numpy(),
+            self.make_time_absolute(physics_inputs)[:, 0].detach().numpy(),
             dsoc_dt.detach().numpy(),
             label="Predicted dSoC/dt",
             s=1
         )
         # Plot the true derivative of the SoC with respect to time_step
         plt.scatter(
-            physics_input[:, 0].detach().numpy(),
+            self.make_time_absolute(physics_inputs)[:, 0].detach().numpy(),
             current.detach().numpy() / capacity,
             label="True dSoC/dt",
             s=1
@@ -231,3 +231,20 @@ class Plot:
             duration=int(1000 / fps),
             loop=loop,
         )
+    def make_time_absolute(self, data):
+        """
+        The time in the data are relative to the previous time step. This function makes the time relative to the first time step.
+
+        Parameters
+        ----------
+        data : Tensor
+            Data to make the time absolute.
+
+        Returns
+        -------
+        data : Tensor
+            Data with absolute time.
+        """
+        temp_data = data.clone().detach().numpy()
+        temp_data[:, 0] = np.cumsum(temp_data[:, 0])
+        return torch.from_numpy(temp_data)

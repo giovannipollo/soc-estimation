@@ -2,21 +2,21 @@ import logging
 import torch
 import pandas as pd
 import numpy as np
+import os
 
 
 class SandiaDataset:
     def __init__(
         self,
-        file,
-        train_cycles=0,
-        test_cycles=0,
-        physics_cycles=0,
+        cell_type="LFP",
+        train_cycles_percentage=0,
+        test_cycles_percentage=0,
+        physics_cycles_percentage=0,
         nominal_capacity=1.1,
         data_top_threshold=1,
         data_bottom_threshold=0,
         physics_top_threshold=1,
         physics_bottom_threshold=0,
-        generate_random_data=False,
     ):
         """
         Constructor of the dataset.
@@ -46,27 +46,23 @@ class SandiaDataset:
         -------
         None.
         """
-        self.train_cycles = train_cycles
-        self.test_cycles = test_cycles
-        self.physics_cycles = physics_cycles
+        self.train_cycles_percentage = train_cycles_percentage
+        self.test_cycles_percentage = test_cycles_percentage
+        self.physics_cycles_percentage = physics_cycles_percentage
         self.nominal_capacity = nominal_capacity
         self.data_top_threshold = data_top_threshold
         self.data_bottom_threshold = data_bottom_threshold
         self.physics_top_threshold = physics_top_threshold
         self.physics_bottom_threshold = physics_bottom_threshold
-        self.load_dataset(file=file)
-        self.reset_time_to_zero_when_new_cycle_starts()
+        self.cell_type = cell_type
+        self.load_dataset()
+        self.make_time_relative_to_previous_entry()
         self.compute_state_of_charge()
         self.clean_dataset()
         self.extract_useful_data()
-        if generate_random_data:
-            self.generate_random_data(
-                discharge=True, discharge_c=3, charge_c=0.5, num_points=100, temperature=25
-            )
-        else:
-            self.split_and_prepare_dataset()
+        self.split_and_prepare_dataset()
 
-    def load_dataset(self, file):
+    def load_dataset(self):
         """
         Prepare sandia dataset
 
@@ -79,19 +75,30 @@ class SandiaDataset:
         -------
         None.
         """
-        self.data = pd.read_csv(file)
-        # Extract the data we want to use
-        self.data = self.data[
-            [
-                "Test_Time (s)",
-                "Cycle_Index",
-                "Voltage (V)",
-                "Current (A)",
-                "Cell_Temperature (C)",
-                "Charge_Capacity (Ah)",
-                "Discharge_Capacity (Ah)",
-            ]
-        ]
+        # Declare the directory where the data is
+        directory = "data/Sandia/time_series/"
+        for filename in os.listdir(directory):
+            # Check if the filename ends with .csv and starts with SNL_18650_ + cell_type
+            if filename.endswith(".csv") and filename.startswith(
+                "SNL_18650_" + self.cell_type
+            ):
+                file = os.path.join(directory, filename)
+                # Read the data and append it to the dataset
+                if not hasattr(self, "data"):
+                    self.data = pd.read_csv(file)
+                else:
+                    self.data = self.data.append(pd.read_csv(file))
+                self.data = self.data[
+                    [
+                        "Test_Time (s)",
+                        "Cycle_Index",
+                        "Voltage (V)",
+                        "Current (A)",
+                        "Cell_Temperature (C)",
+                        "Charge_Capacity (Ah)",
+                        "Discharge_Capacity (Ah)",
+                    ]
+                ]
 
     def clean_dataset(self):
         """
@@ -173,32 +180,18 @@ class SandiaDataset:
         self.train_inputs = self.train_data[
             ["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]
         ]
-        # Add the array of the nominal capacity
-        self.train_inputs["Nominal_Capacity"] = np.ones(
-            self.train_inputs.shape[0]
-        ) * self.nominal_capacity
-        # Add the C rate
-        # self.train_inputs["C_Rate"] = self.train_inputs["Current (A)"] / self.nominal_capacity
         self.train_outputs = self.train_data[["Capacity"]]
+
+        # Extract the inputs and outputs
         self.test_inputs = self.test_data[
             ["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]
         ]
-        # Add the array of the nominal capacity
-        self.test_inputs["Nominal_Capacity"] = np.ones(
-            self.test_inputs.shape[0]
-        ) * self.nominal_capacity
-        # Add the C rate
-        # self.test_inputs["C_Rate"] = self.test_inputs["Current (A)"] / self.nominal_capacity
         self.test_outputs = self.test_data[["Capacity"]]
+
+        # Extract the inputs and outputs
         self.physics_inputs = self.physics_data[
             ["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]
         ]
-        # Add the array of the nominal capacity
-        self.physics_inputs["Nominal_Capacity"] = np.ones(
-            self.physics_inputs.shape[0]
-        ) * self.nominal_capacity
-        # Add the C rate
-        # self.physics_inputs["C_Rate"] = self.physics_inputs["Current (A)"] / self.nominal_capacity
         self.physics_outputs = self.physics_data[["Capacity"]]
 
         # Save the train and test data
@@ -211,13 +204,13 @@ class SandiaDataset:
 
         # Convert the Test_Time (s) to hours
         self.train_inputs.loc[:, "Test_Time (s)"] = (
-            self.train_inputs["Test_Time (s)"] / 3600
+            self.train_inputs.loc[:, "Test_Time (s)"] / 3600
         )
         self.test_inputs.loc[:, "Test_Time (s)"] = (
-            self.test_inputs["Test_Time (s)"] / 3600
+            self.test_inputs.loc[:, "Test_Time (s)"] / 3600
         )
         self.physics_inputs.loc[:, "Test_Time (s)"] = (
-            self.physics_inputs["Test_Time (s)"] / 3600
+            self.physics_inputs.loc[:, "Test_Time (s)"] / 3600
         )
 
         # Convert the inputs and outputs to tensors
@@ -305,17 +298,25 @@ class SandiaDataset:
 
     def reset_time_to_zero_when_new_cycle_starts(self):
         """
-        Reset the time to zero when a new cycle starts
+        Reset the time to zero when a new cycle starts and make the time relative to the previous entry
         """
         # Find the indices where Cycle_Index changes
         cycle_indices = np.where(self.data["Cycle_Index"].diff() > 0)[0]
 
+        # Compute the time difference between the first entry of the cycle and the next entries
         for idx in cycle_indices:
             initial_time = self.data.at[idx, "Test_Time (s)"]
             self.data.loc[idx:, "Test_Time (s)"] -= initial_time
 
         # Reset the time for the first cycle
         self.data.loc[self.data.index[0], "Test_Time (s)"] = 0
+
+    def make_time_relative_to_previous_entry(self):
+        """
+        Make the time relative to the previous entry
+        """
+        self.data["Test_Time (s)"] = self.data["Test_Time (s)"].diff()
+        self.data["Test_Time (s)"].iloc[0] = 0
 
     def generate_random_data(
         self,
