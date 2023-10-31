@@ -10,6 +10,7 @@ import logging
 import sys
 import os
 import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
 
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
@@ -63,12 +64,42 @@ def train():
         cache=False,
     )
 
-    
+    class_old_dataset = SandiaDataset(
+        file="data/Sandia/time_series/SNL_18650_LFP_25C_0-100_0.5-0.5C_a_timeseries.csv",
+        train_cycles=1,
+        test_cycles=1,
+        physics_cycles=1,
+        nominal_capacity=1.1,
+        data_top_threshold=1,
+        data_bottom_threshold=0,
+        physics_top_threshold=1,
+        physics_bottom_threshold=0,
+    )
+
+    train_data, test_data, physics_data = class_dataset.split_data_cycles(
+        first_part_cycles=1,
+        second_part_cycles=1,
+        third_part_cycles=1
+    )
+
+    train_dataloader = DataLoader(dataset=train_data, batch_size=4096, shuffle=False)
+
+
+
     plot = Plot()
-    train_inputs, train_outputs = dataset_train.get_train_data()
-    test_inputs, test_outputs = dataset_test.get_test_data()
-    physics_inputs = dataset_physics.get_physics_input()
-    physics_outputs = dataset_physics.get_physics_output()
+    train_inputs, train_outputs = class_old_dataset.get_train_data()
+    test_inputs, test_outputs = class_old_dataset.get_test_data()
+    physics_inputs = class_old_dataset.get_physics_input()
+    physics_outputs = class_old_dataset.get_physics_output()
+    
+
+    for batch, (inputs, outputs) in enumerate(train_dataloader):
+        print(inputs)
+        print(train_inputs)
+        
+    exit()
+    
+
     # Set the seed for reproducibility
     torch.manual_seed(0)
     # Create the model
@@ -79,14 +110,14 @@ def train():
     # Create the optimizer
     optimizer = optim.Adam(model.parameters(), lr=initial_lr)
     # Create a learning rate scheduler
-    scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=500, min_lr=1e-6)
+    # scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=500, min_lr=1e-6)
     # Initialize other training parameters
     best_train_loss = float("inf")
     best_validation_loss = float("inf")
     # Number of epochs to wait before stopping if validation loss increases
     logging.debug("Starting training")
     # Set the patience to a huge value to avoid early stopping
-    patience = 100000
+    patience = 1000000
     for epoch in range(1500000):
         # Reset the gradients
         optimizer.zero_grad()
@@ -94,7 +125,7 @@ def train():
         train_loss = model.loss(
             x=train_inputs,
             y=train_outputs,
-            physics_informed=True,
+            physics_informed=False,
             physics_x=physics_inputs,
             nominal_capacity=1.1,
         )
@@ -136,7 +167,7 @@ def train():
         # Log the loss
         logging.info("Train loss: %f" % train_loss.item())
         logging.info("Validation loss: %f" % validation_loss)
-        scheduler.step(validation_loss)
+        # scheduler.step(validation_loss)
         # Check if validation loss is increasing
         if validation_loss < best_validation_loss:
             best_validation_loss = validation_loss
