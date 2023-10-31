@@ -16,7 +16,9 @@ class NewSandiaDataset(Dataset):
             self.data = self.extract_wanted_data()
             self.data = self.convert_capacity_to_soc()
             self.data = self.remove_data_outside_soc_threshold(top_threshold=1, bottom_threshold=0)
+            self.data = self.set_initial_test_time()
             # self.data = self.remove_data_outside_timestamp_threshold(top_threshold=121, bottom_threshold=119)
+            self.data.to_csv("data2.csv")
             self.data.to_pickle("data.pkl")
 
     def __len__(self):
@@ -78,9 +80,11 @@ class NewSandiaDataset(Dataset):
         Remove the data below the top_threshold and above the bottom_threshold.
         """
         self.data = self.data[
-            (self.data["Capacity"] <= top_threshold)
-            & (self.data["Capacity"] >= bottom_threshold)
+            (self.data["Capacity"] < top_threshold)
+            & (self.data["Capacity"] > bottom_threshold)
         ]
+        # Reset the index
+        self.data = self.data.reset_index(drop=True)
         return self.data
 
     def remove_data_outside_timestamp_threshold(self, top_threshold, bottom_threshold):
@@ -88,8 +92,8 @@ class NewSandiaDataset(Dataset):
         Remove the data above the threshold.
         """
         self.data = self.data[
-            (self.data["Test_Time (s)"] <= top_threshold)
-            & (self.data["Test_Time (s)"] >= bottom_threshold)
+            (self.data["Test_Time (s)"] < top_threshold)
+            & (self.data["Test_Time (s)"] > bottom_threshold)
         ]
         return self.data
 
@@ -207,7 +211,12 @@ class NewSandiaDataset(Dataset):
                 data["Cycle_Index"] == cycle_index, "Test_Time (s)"
             ] = relative_time_steps
         return data
-    
+
+    def set_initial_test_time(self):
+        # Set the first time step to 0
+        self.data.loc[0, "Test_Time (s)"] = 0
+        return self.data
+
 class NewSandiaDatasetWrapper(Dataset):
     def __init__(self, dataset):
         self.dataset = dataset

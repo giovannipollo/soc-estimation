@@ -167,3 +167,5 @@ plots/
 pth_models/
 *.pth
 *.png
+*.csv
+*.pkl
