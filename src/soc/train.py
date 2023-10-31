@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 from dataset.sandia import SandiaDataset
+from dataset.new_sandia import NewSandiaDataset
 from plot.plot import Plot
 
 
@@ -55,6 +56,14 @@ def train():
         physics_bottom_threshold=0 
     )
 
+    class_dataset = NewSandiaDataset(
+        directory="data/Sandia/time_series_subset",
+        cell_type="LFP",
+        nominal_capacity=1.1,
+        cache=False,
+    )
+
+    
     plot = Plot()
     train_inputs, train_outputs = dataset_train.get_train_data()
     test_inputs, test_outputs = dataset_test.get_test_data()

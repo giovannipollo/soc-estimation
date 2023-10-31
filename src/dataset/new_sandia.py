@@ -16,7 +16,7 @@ class NewSandiaDataset(Dataset):
             self.data = self.extract_wanted_data()
             self.data = self.convert_capacity_to_soc()
             self.data = self.remove_data_outside_soc_threshold(top_threshold=1, bottom_threshold=0)
-            self.data = self.remove_data_outside_timestamp_threshold(top_threshold=121, bottom_threshold=119)
+            # self.data = self.remove_data_outside_timestamp_threshold(top_threshold=121, bottom_threshold=119)
             self.data.to_pickle("data.pkl")
 
     def __len__(self):
@@ -113,26 +113,70 @@ class NewSandiaDataset(Dataset):
 
         """
         # Compute the number of cycles based on the percentage
-        train_cycles = int(len(self.data["Cycle_Index"]) * first_part_percentage)
-        test_cycles = int(len(self.data["Cycle_Index"]) * second_part_percentage)
-        physics_cycles = int(len(self.data["Cycle_Index"]) * third_part_percentage)
+        train_cycles = int((self.data["Absolute_Cycle_Index"].max()) * first_part_percentage)
+        test_cycles = int((self.data["Absolute_Cycle_Index"].max()) * second_part_percentage)
+        physics_cycles = int((self.data["Absolute_Cycle_Index"].max()) * third_part_percentage)
 
         # Get the train data
-        first_data = self.data[self.data["Cycle_Index"] <= train_cycles]
+        first_data = self.data[self.data["Absolute_Cycle_Index"] <= train_cycles]
         
         # Get the test data
         second_data = self.data[
-            (self.data["Cycle_Index"] > train_cycles)
-            & (self.data["Cycle_Index"] <= train_cycles + test_cycles)
+            (self.data["Absolute_Cycle_Index"] > train_cycles)
+            & (self.data["Absolute_Cycle_Index"] <= train_cycles + test_cycles)
         ]
         
         # Get the physics data
         third_data = self.data[
-            (self.data["Cycle_Index"] > train_cycles + test_cycles)
-            & (self.data["Cycle_Index"] <= train_cycles + test_cycles + physics_cycles)
+            (self.data["Absolute_Cycle_Index"] > train_cycles + test_cycles)
+            & (self.data["Absolute_Cycle_Index"] <= train_cycles + test_cycles + physics_cycles)
         ]
 
-        # Create TensorDatasets
+        # Create NewSandiaDatasetWrapper objects
+        first_dataset = NewSandiaDatasetWrapper(first_data)
+        second_dataset = NewSandiaDatasetWrapper(second_data)
+        third_dataset = NewSandiaDatasetWrapper(third_data)
+
+        return first_dataset, second_dataset, third_dataset
+
+    def split_data_cycles(self, first_part_cycles, second_part_cycles, third_part_cycles):
+        """
+        Split the data into train, test and physics data.
+
+        Parameters
+        ----------
+        train_percentage : float
+            Percentage of data used for training.
+        test_percentage : float
+            Percentage of data used for testing.
+        physics_percentage : float
+            Percentage of data used for physics.
+
+        Returns
+        -------
+
+        """
+        # Compute the number of cycles based on the percentage
+        train_cycles = first_part_cycles
+        test_cycles = second_part_cycles
+        physics_cycles = third_part_cycles
+
+        # Get the train data
+        first_data = self.data[self.data["Absolute_Cycle_Index"] <= train_cycles]
+        
+        # Get the test data
+        second_data = self.data[
+            (self.data["Absolute_Cycle_Index"] > train_cycles)
+            & (self.data["Absolute_Cycle_Index"] <= train_cycles + test_cycles)
+        ]
+        
+        # Get the physics data
+        third_data = self.data[
+            (self.data["Absolute_Cycle_Index"] > train_cycles + test_cycles)
+            & (self.data["Absolute_Cycle_Index"] <= train_cycles + test_cycles + physics_cycles)
+        ]
+
+        # Create NewSandiaDatasetWrapper objects
         first_dataset = NewSandiaDatasetWrapper(first_data)
         second_dataset = NewSandiaDatasetWrapper(second_data)
         third_dataset = NewSandiaDatasetWrapper(third_data)
@@ -140,6 +184,7 @@ class NewSandiaDataset(Dataset):
         return first_dataset, second_dataset, third_dataset
 
 
+    
     def compute_relative_time(self, data):
         """
         Compute the relative time step with respect to the previous time step for every cycle
