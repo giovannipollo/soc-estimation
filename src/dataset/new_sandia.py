@@ -180,6 +180,8 @@ class NewSandiaDataset(Dataset):
             & (self.data["Absolute_Cycle_Index"] <= train_cycles + test_cycles + physics_cycles)
         ]
 
+        first_data.to_csv("data3.csv")
+
         # Create NewSandiaDatasetWrapper objects
         first_dataset = NewSandiaDatasetWrapper(first_data)
         second_dataset = NewSandiaDatasetWrapper(second_data)

@@ -93,11 +93,27 @@ def train():
     physics_outputs = class_old_dataset.get_physics_output()
     
 
-    for batch, (inputs, outputs) in enumerate(train_dataloader):
-        print(inputs)
-        print(train_inputs)
-        
-    exit()
+    # for batch, (inputs, outputs) in enumerate(train_dataloader):
+    #     print(inputs)
+    #     print(train_inputs)
+    
+    # # Extract the all columns except the first one
+    # temp_data = train_inputs
+    # temp_data_class = inputs
+
+    # temp_data = temp_data.float()
+    # temp_data_class = temp_data_class.float()
+
+
+    # # Loop over the tensor and check if the values are the same
+    # for i in range(len(temp_data)):
+    #     for j in range(len(temp_data[i])):
+    #         if temp_data[i][j] != temp_data_class[i][j]:
+    #             print("Not the same")
+    #             print(i, j)
+    #             print(temp_data[i][j])
+    #             print(temp_data_class[i][j])
+    # exit()
     
 
     # Set the seed for reproducibility
