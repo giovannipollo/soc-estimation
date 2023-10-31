@@ -63,7 +63,7 @@ class PINN_Model(nn.Module):
         return output
 
     def loss(
-        self, x, y, physics_x=None, physics_informed=False, pinn_type="cc"
+        self, x, y, physics_x=None, physics_informed=False, pinn_type="cc", nominal_capacity=1.1
     ):
         """
         Loss function of the model.
@@ -98,7 +98,7 @@ class PINN_Model(nn.Module):
         # Loss driven by physics
         if physics_informed:
             if pinn_type == "cc":
-                physics_loss = self.physics_loss_soc_de(physics_x)
+                physics_loss = self.physics_loss_soc_de(physics_x, nominal_capacity=nominal_capacity)
             elif pinn_type == "rint":
                 physics_loss = self.physics_loss_Rint(physics_x, y)
             else:
@@ -180,7 +180,7 @@ class PINN_Model(nn.Module):
         )
         return eq_loss
 
-    def physics_loss_soc_de(self, x):
+    def physics_loss_soc_de(self, x, nominal_capacity=1.1):
         """
         Equation loss of the model. The equation is the following:
         dSoC/dt = I / C
@@ -208,11 +208,9 @@ class PINN_Model(nn.Module):
         voltage = x[:, 1].clone().detach().requires_grad_(True)
         current = x[:, 2].clone().detach().requires_grad_(True)
         temperature = x[:, 3].clone().detach().requires_grad_(True)
-        nominal_capacity = x[:, 4].clone().detach().requires_grad_(True)
-        # c_rate = x[:, 5].clone().detach().requires_grad_(True)
 
         # Define the physics inputs
-        physics_input = torch.stack((time_step, voltage, current, temperature, nominal_capacity), dim=1)
+        physics_input = torch.stack((time_step, voltage, current, temperature), dim=1)
 
         # Compute the estimated SoC
         estimated_soc = self.forward(physics_input)

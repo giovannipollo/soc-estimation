@@ -180,12 +180,10 @@ class Plot:
         voltage = physics_inputs[:, 1].clone().detach().requires_grad_(True)
         current = physics_inputs[:, 2].clone().detach().requires_grad_(True)
         temperature = physics_inputs[:, 3].clone().detach().requires_grad_(True)
-        nominal_capacity = physics_inputs[:, 4].clone().detach().requires_grad_(True)
-        # c_rate = physics_inputs[:, 5].clone().detach().requires_grad_(True)
         physics_output = physics_outputs.clone().detach().requires_grad_(True)
         
         # Define the physics inputs
-        physics_input = torch.stack((time_step, voltage, current, temperature, nominal_capacity), dim=1)
+        physics_input = torch.stack((time_step, voltage, current, temperature), dim=1)
         
         # Compute the estimated SoC
         estimated_soc = model.forward(physics_input)

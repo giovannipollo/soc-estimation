@@ -87,6 +87,7 @@ def train():
             y=train_outputs,
             physics_informed=True,
             physics_x=physics_inputs,
+            nominal_capacity=1.1,
         )
         # Calculate the validation loss
         validation_loss = model.validation_loss(x=test_inputs, y=test_outputs).item()
