@@ -24,7 +24,7 @@ class PINN_Model(nn.Module):
         - State of Charge (SoC): The SoC is a value between 0 and 1 that indicates the current capacity of the battery.
     """
 
-    def __init__(self, input_size=5, output_size=1, hidden_size=16):
+    def __init__(self, input_size=4, output_size=1, hidden_size=16):
         """
         Constructor of the model
 
