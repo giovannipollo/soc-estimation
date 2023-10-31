@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from PIL import Image
 import torch
+import numpy as np
 
 
 class Plot:
@@ -44,12 +45,12 @@ class Plot:
         # Place the epoch number on the plot
         plt.text(0.3, 1.1, "Epoch: %d, MSELoss: %f" % (epoch, validation_loss), transform=plt.gca().transAxes)
         plt.scatter(
-            test_inputs[:, 0].detach().numpy(),
+            np.cumsum(test_inputs[:, 0].detach().numpy()),
             test_outputs.detach().numpy(),
             label="True SoC",
         )
         plt.scatter(
-            test_inputs[:, 0].detach().numpy(),
+            np.cumsum(test_inputs[:, 0].detach().numpy()),
             model.forward(test_inputs).detach().numpy(),
             label="Predicted SoC",
         )
@@ -229,3 +230,5 @@ class Plot:
             duration=int(1000 / fps),
             loop=loop,
         )
+
+

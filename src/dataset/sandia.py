@@ -59,6 +59,7 @@ class SandiaDataset:
         self.compute_state_of_charge()
         self.clean_dataset()
         self.extract_useful_data()
+        self.make_time_relative_previous_timestamp()
         if generate_random_data:
             self.generate_random_data(
                 discharge=True, discharge_c=3, charge_c=0.5, num_points=100, temperature=25
@@ -97,9 +98,11 @@ class SandiaDataset:
         """
         Clean the dataset, mainly removing the lines where the difference between the charge and discharge capacity is smaller than zero
         """
-        self.remove_data_below_threshold(
+        self.data = self.remove_data_below_threshold(
             data=self.data, top_threshold=1, bottom_threshold=0
         )
+        # Reset the index
+        self.data = self.data.reset_index(drop=True)
 
     def convert_capacity_to_soc(self):
         """
@@ -194,15 +197,15 @@ class SandiaDataset:
             self.physics_data.to_csv("data/temp_data/physics_data.csv")
 
         # Convert the Test_Time (s) to hours
-        self.train_inputs.loc[:, "Test_Time (s)"] = (
-            self.train_inputs["Test_Time (s)"] / 3600
-        )
-        self.test_inputs.loc[:, "Test_Time (s)"] = (
-            self.test_inputs["Test_Time (s)"] / 3600
-        )
-        self.physics_inputs.loc[:, "Test_Time (s)"] = (
-            self.physics_inputs["Test_Time (s)"] / 3600
-        )
+        # self.train_inputs.loc[:, "Test_Time (s)"] = (
+        #     self.train_inputs["Test_Time (s)"] / 3600
+        # )
+        # self.test_inputs.loc[:, "Test_Time (s)"] = (
+        #     self.test_inputs["Test_Time (s)"] / 3600
+        # )
+        # self.physics_inputs.loc[:, "Test_Time (s)"] = (
+        #     self.physics_inputs["Test_Time (s)"] / 3600
+        # )
 
         # Convert the inputs and outputs to tensors
         self.train_inputs = torch.tensor(self.train_inputs.values, dtype=torch.float32)
@@ -340,3 +343,25 @@ class SandiaDataset:
         self.physics_inputs = torch.tensor(
             self.physics_inputs.values, dtype=torch.float32
         )
+
+    def make_time_relative_previous_timestamp(self):
+        """
+        Make the time relative to the previous timestamp
+        """
+        # Get the cycle indexes
+        cycle_indexes = self.data["Cycle_Index"].unique()
+        # For each cycle
+        for cycle_index in cycle_indexes:
+            # Get the cycle data
+            cycle_data = self.data[self.data["Cycle_Index"] == cycle_index]
+            # Get the time steps
+            time_steps = cycle_data["Test_Time (s)"]
+            # Compute the relative time steps with respect to the previous time step
+            relative_time_steps = time_steps.diff()
+            # Set the first time step to 0 if the length of the cycle is greater than 1
+            if len(relative_time_steps) > 1:
+                relative_time_steps.iloc[0] = 0
+            # Update the data
+            self.data.loc[
+                self.data["Cycle_Index"] == cycle_index, "Test_Time (s)"
+            ] = relative_time_steps
