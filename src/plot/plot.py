@@ -91,13 +91,13 @@ class Plot:
         plt.text(0.5, 1.1, "Epoch: %d" % epoch, transform=plt.gca().transAxes)
         # Plot the points without the line
         plt.scatter(
-            train_inputs[:, 0].detach().numpy(),
+            np.cumsum(train_inputs[:, 0].detach().numpy()),
             train_outputs.detach().numpy(),
             label="True SoC",
             s=1,
         )
         plt.scatter(
-            train_inputs[:, 0].detach().numpy(),
+            np.cumsum(train_inputs[:, 0].detach().numpy()),
             model.forward(train_inputs).detach().numpy(),
             label="Predicted SoC",
             s=1,
@@ -138,13 +138,13 @@ class Plot:
         # Place the epoch number on the plot
         plt.text(0.5, 1.1, "Epoch: %d" % epoch, transform=plt.gca().transAxes)
         plt.scatter(
-            physics_inputs[:, 0].detach().numpy(),
+            np.cumsum(physics_inputs[:, 0].detach().numpy()),
             model.forward(physics_inputs).detach().numpy(),
             label="Predicted SoC Physics",
             s=1,
         )
         plt.scatter(
-            physics_inputs[:, 0].detach().numpy(),
+            np.cumsum(physics_inputs[:, 0].detach().numpy()),
             physics_outputs.detach().numpy(),
             label="True SoC Physics",
             s=1,
@@ -199,14 +199,14 @@ class Plot:
         # Plot the derivative of the SoC with respect to time_step
         plt.figure()
         plt.scatter(
-            physics_input[:, 0].detach().numpy(),
+            np.cumsum(physics_input[:, 0].detach().numpy()),
             dsoc_dt.detach().numpy(),
             label="Predicted dSoC/dt",
             s=1
         )
         # Plot the true derivative of the SoC with respect to time_step
         plt.scatter(
-            physics_input[:, 0].detach().numpy(),
+            np.cumsum(physics_input[:, 0].detach().numpy()),
             current.detach().numpy() / capacity,
             label="True dSoC/dt",
             s=1
