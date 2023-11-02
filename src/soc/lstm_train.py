@@ -3,8 +3,7 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import pandas as pd
 import torch
-from model import PINN_Model
-from soc.model import PINN_Model
+from lstm_model import LSTM_Model
 import scipy.io as sio
 import logging
 import sys
@@ -30,14 +29,13 @@ def train():
     )
 
     train_data, test_data, physics_data = class_dataset.split_data_cycles(
-        first_part_cycles=1,
+        first_part_cycles=4,
         second_part_cycles=1,
         third_part_cycles=1
     )
 
     train_dataloader = DataLoader(dataset=train_data, batch_size=4096, shuffle=False, num_workers=8)
     test_dataloader = DataLoader(dataset=test_data, batch_size=4096, shuffle=False, num_workers=8)
-    physics_dataloader = DataLoader(dataset=physics_data, batch_size=4096, shuffle=False, num_workers=8)
 
 
     plot = Plot()
@@ -47,8 +45,7 @@ def train():
     torch.manual_seed(0)
     # Create the model
     logging.debug("Creating model")
-    model = PINN_Model(hidden_size=20)
-    
+    model = LSTM_Model(input_size=3, output_size=1, hidden_size=16)
     # Define the initial learning rate
     initial_lr = 0.001
     # Create the optimizer
@@ -67,20 +64,16 @@ def train():
         test_inputs = inputs
         test_outputs = outputs
         break
-    for batch, (inputs, outputs) in enumerate(physics_dataloader):
-        physics_inputs = inputs
-        physics_outputs = outputs
-        break
     train_inputs = train_inputs.float()
     train_outputs = train_outputs.float()
     test_inputs = test_inputs.float()
     test_outputs = test_outputs.float()
-    physics_inputs = physics_inputs.float()
-    physics_outputs = physics_outputs.float()
     # Reshape the outputs to be 2D tensors
     train_outputs = torch.reshape(train_outputs, (-1, 1))
     test_outputs = torch.reshape(test_outputs, (-1, 1))
-    physics_outputs = torch.reshape(physics_outputs, (-1, 1))
+    # Reshape the inputs tensor
+    train_inputs = torch.reshape(input=train_inputs, shape=(train_inputs.shape[0], 1, train_inputs.shape[1]))
+    test_inputs = torch.reshape(input=test_inputs, shape=(test_inputs.shape[0], 1, test_inputs.shape[1]))
     logging.debug("Starting training")
     # Set the patience to a huge value to avoid early stopping
     patience = 1000000
@@ -88,42 +81,37 @@ def train():
         # Reset the gradients
         optimizer.zero_grad()
         # Calculate the train loss
-        train_loss = model.loss(
-            x=train_inputs,
-            y=train_outputs,
-            physics_informed=True,
-            physics_x=physics_inputs,
-            nominal_capacity=1.1,
-        )
-        # Calculate the validation loss
-        validation_loss = model.validation_loss(x=test_inputs, y=test_outputs).item()
+        prediction = model.forward(x=train_inputs)
+        train_loss = model.loss(y_pred=prediction, y_true=train_outputs)
+        validation_prediction = model.forward(x=test_inputs)
+        validation_loss = model.loss(y_pred=validation_prediction, y_true=test_outputs)
         if epoch % 2000 == 0:
-            plot.plot_epoch_predictions_train(
-                epoch=epoch,
-                model=model,
-                train_inputs=train_inputs,
-                train_outputs=train_outputs,
-            )
-            plot.plot_epoch_prediction_test(
+            # plot.plot_epoch_predictions_train(
+            #     epoch=epoch,
+            #     model=model,
+            #     train_inputs=train_inputs,
+            #     train_outputs=train_outputs,
+            # )
+            plot.plot_epoch_prediction_test_lstm(
                 epoch=epoch,
                 model=model,
                 test_inputs=test_inputs,
                 test_outputs=test_outputs,
                 validation_loss=validation_loss,
             )
-            plot.plot_epoch_prediction_physic(
-                epoch=epoch,
-                model=model,
-                physics_inputs=physics_inputs,
-                physics_outputs=physics_outputs,
-            )
-            plot.plot_epoch_dsoc_dt(
-                epoch=epoch,
-                model=model,
-                physics_inputs=physics_inputs,
-                physics_outputs=physics_outputs,
-                capacity=1.1,
-            )
+            # plot.plot_epoch_prediction_physic(
+            #     epoch=epoch,
+            #     model=model,
+            #     physics_inputs=physics_inputs,
+            #     physics_outputs=physics_outputs,
+            # )
+            # plot.plot_epoch_dsoc_dt(
+            #     epoch=epoch,
+            #     model=model,
+            #     physics_inputs=physics_inputs,
+            #     physics_outputs=physics_outputs,
+            #     capacity=1.1,
+            # )
             logging.info(
                 "Epoch: %d, Validation loss: %f, Best Validation loss: %f"
                 % (epoch, validation_loss, best_validation_loss)
