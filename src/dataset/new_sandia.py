@@ -18,7 +18,6 @@ class NewSandiaDataset(Dataset):
             self.data = self.remove_data_outside_soc_threshold(top_threshold=1, bottom_threshold=0)
             self.data = self.set_initial_test_time()
             # self.data = self.remove_data_outside_timestamp_threshold(top_threshold=121, bottom_threshold=119)
-            self.data.to_csv("data2.csv")
             self.data.to_pickle("data.pkl")
 
     def __len__(self):
@@ -179,8 +178,6 @@ class NewSandiaDataset(Dataset):
             (self.data["Absolute_Cycle_Index"] > train_cycles + test_cycles)
             & (self.data["Absolute_Cycle_Index"] <= train_cycles + test_cycles + physics_cycles)
         ]
-
-        first_data.to_csv("data3.csv")
 
         # Create NewSandiaDatasetWrapper objects
         first_dataset = NewSandiaDatasetWrapper(first_data)
