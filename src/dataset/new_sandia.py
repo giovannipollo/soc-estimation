@@ -17,7 +17,8 @@ class NewSandiaDataset(Dataset):
             self.data = self.convert_capacity_to_soc()
             self.data = self.remove_data_outside_soc_threshold(top_threshold=1, bottom_threshold=0)
             self.data = self.set_initial_test_time()
-            # self.data = self.remove_data_outside_timestamp_threshold(top_threshold=121, bottom_threshold=119)
+            self.data = self.remove_data_outside_timestamp_threshold(top_threshold=121, bottom_threshold=119)
+            self.data.to_csv("data.csv")
             self.data.to_pickle("data.pkl")
 
     def __len__(self):
@@ -25,7 +26,7 @@ class NewSandiaDataset(Dataset):
 
     def __getitem__(self, idx):
         data = self.data.iloc[idx]
-        inputs = data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
+        inputs = data[["Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
         outputs = data["Capacity"]
         return inputs, outputs
 
@@ -94,6 +95,7 @@ class NewSandiaDataset(Dataset):
             (self.data["Test_Time (s)"] < top_threshold)
             & (self.data["Test_Time (s)"] > bottom_threshold)
         ]
+        self.data = self.data.reset_index(drop=True)
         return self.data
 
     def split_data(
@@ -225,7 +227,7 @@ class NewSandiaDatasetWrapper(Dataset):
 
     def __getitem__(self, idx):
         data = self.dataset.iloc[idx]
-        inputs = data[["Test_Time (s)", "Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
+        inputs = data[["Voltage (V)", "Current (A)", "Cell_Temperature (C)"]]
         outputs = data["Capacity"]
         # Convert the inputs and outputs to tensors
         inputs = torch.tensor(inputs)

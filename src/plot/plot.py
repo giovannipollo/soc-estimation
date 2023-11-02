@@ -64,6 +64,51 @@ class Plot:
         plt.savefig(filename_constant)
         plt.close()
 
+    def plot_epoch_prediction_test_lstm(self, epoch, model, test_inputs, test_outputs, validation_loss):
+        """
+        Plot the prediction of the model for the test data
+
+        Parameters
+        ----------
+        epoch : int
+            Current epoch.
+        model : PINN_Model
+            Model to use for the prediction.
+        test_inputs : torch.tensor
+            Inputs of the test data.
+        test_outputs : torch.tensor
+            Outputs of the test data.
+
+        Returns
+        -------
+        None.
+        """
+        # Plot the prediction for the test data
+        plt.figure(figsize=(8,4))
+        l = plt.legend(loc=(1.01,0.34), frameon=False, fontsize="large")
+        plt.setp(l.get_texts(), color="k")
+        # Place the epoch number on the plot
+        plt.text(0.3, 1.1, "Epoch: %d, MSELoss: %f" % (epoch, validation_loss), transform=plt.gca().transAxes)
+        plt.scatter(
+            test_inputs[:, 0, 0].detach().numpy(),
+            torch.flatten(test_outputs).detach().numpy(),
+            label="True SoC",
+        )
+        plt.scatter(
+            test_inputs[:, 0, 0].detach().numpy(),
+            torch.flatten(model.forward(test_inputs)).detach().numpy(),
+            label="Predicted SoC",
+        )
+        plt.xlabel("Voltage")
+        plt.ylabel("SoC")
+        plt.legend()
+        filename = "plots/test/epoch_%d_test.png" % epoch
+        plt.savefig(filename)
+        self.plot_epoch_prediction_test_plots.append(filename)
+        filename_constant = "epoch_test.png"
+        plt.savefig(filename_constant)
+        plt.close()
+
     def plot_epoch_predictions_train(self, epoch, model, train_inputs, train_outputs):
         """
         Plot the prediction of the model for the train data
